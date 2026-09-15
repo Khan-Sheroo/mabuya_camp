@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Message Board — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell messages-shell"
+         id="projectMessagesApp"
+         data-project-id="{{ project.id }}"
+         data-category="{{ category_filter }}"
+         data-sort="{{ sort }}">
+        <div class="shell-ribbon">
+            <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="shell-ribbon-title" title="{{ project.name }}">
+                {{ project.name }}
+            </a>
+            <div class="shell-ribbon-actions">
+                <div class="dropdown">
+                    <button type="button" class="shell-ribbon-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Project actions">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects.dashboard', project_id=project.id) }}">Back to project</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="messages-page-head">
+            <h1 class="messages-heading">Message Board</h1>
+        </div>
+
+        <div class="messages-toolbar">
+            <a href="{{ url_for('projects.new_message', project_id=project.id) }}" class="btn messages-new-btn">
+                <i class="bi bi-plus-lg"></i> New message
+            </a>
+
+            <a href="{{ url_for('projects.messages', project_id=project.id, sort=sort) }}"
+               class="messages-pill{% if category_filter == 'all' %} is-active{% endif %}">All messages</a>
+
+            <div class="dropdown">
+                <button type="button" class="messages-toolbar-dd" data-bs-toggle="dropdown" aria-expanded="false" id="categoriesBtn">
+                    {% set ns = namespace(cat_label='Categories') %}
+                    {% for cat in categories %}
+                        {% if cat.id|string == category_filter %}{% set ns.cat_label = cat.name %}{% endif %}
+                    {% endfor %}
+                    {{ ns.cat_label }}
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <ul class="dropdown-menu" id="categoriesMenu">
+                    <li>
+                        <a class="dropdown-item{% if category_filter == 'all' %} is-active{% endif %}"
+                           href="{{ url_for('projects.messages', project_id=project.id, sort=sort) }}">All messages</a>
+                    </li>
+                    {% for cat in categories %}
+                    <li>
+                        <a class="dropdown-item{% if category_filter == cat.id|string %} is-active{% endif %}"
+                           href="{{ url_for('projects.messages', project_id=project.id, category=cat.id, sort=sort) }}">
+                            {{ cat.name }}
+                            <span class="messages-cat-count">{{ cat.message_count }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button type="button" class="dropdown-item" id="newCategoryBtn">New category…</button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="dropdown">
+                <button type="button" class="messages-toolbar-dd" data-bs-toggle="dropdown" aria-expanded="false" id="sortBtn">
+                    {% if sort == 'oldest' %}Oldest post
+                    {% elif sort == 'title' %}Title A–Z
+                    {% else %}Newest post{% endif %}
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item{% if sort == 'newest' %} is-active{% endif %}"
+                           href="{{ url_for('projects.messages', project_id=project.id, category=category_filter if category_filter != 'all' else None, sort='newest') }}">Newest post</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item{% if sort == 'oldest' %} is-active{% endif %}"
+                           href="{{ url_for('projects.messages', project_id=project.id, category=category_filter if category_filter != 'all' else None, sort='oldest') }}">Oldest post</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item{% if sort == 'title' %} is-active{% endif %}"
+                           href="{{ url_for('projects.messages', project_id=project.id, category=category_filter if category_filter != 'all' else None, sort='title') }}">Title A–Z</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="messages-filter-wrap">
+                <input type="search" class="messages-filter" id="messagesFilter" placeholder="Filter..." autocomplete="off">
+            </div>
+        </div>
+
+        <div class="messages-msg messages-msg-error d-none" id="messagesError"></div>
+
+        {% if drafts %}
+        <div class="messages-drafts">
+            <h2 class="messages-drafts-heading">Your drafts</h2>
+            {% for message in drafts %}
+            <a href="{{ url_for('projects.edit_message', project_id=project.id, message_id=message.id) }}" class="message-row message-row-draft">
+                <span class="message-row-avatar" style="--i: {{ loop.index0 }}">{{ message.creator.initials if message.creator else '?' }}</span>
+                <span class="message-row-main">
+                    <span class="message-row-title">{{ message.title or 'Untitled draft' }}</span>
+                    <span class="message-row-meta">Draft · updated {{ message.updated_at|relative_time }}</span>
+                </span>
+                <span class="message-row-chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if messages %}
+        <div class="messages-list" id="messagesList">
+            {% for message in messages %}
+            <a href="{{ url_for('projects.message_detail', project_id=project.id, message_id=message.id) }}"
+               class="message-row"
+               data-search="{{ (message.title ~ ' ' ~ plain_excerpt(message.body or '', 500) ~ ' ' ~ (message.category.name if message.category else '') ~ ' ' ~ (message.creator.name if message.creator else ''))|lower }}">
+                <span class="message-row-avatar" style="--i: {{ loop.index0 }}">
+                    {{ message.creator.initials if message.creator else '?' }}
+                </span>
+                <span class="message-row-main">
+                    <span class="message-row-title">{{ message.title }}</span>
+                    <span class="message-row-meta">
+                        {{ message.creator.name if message.creator else 'Someone' }}
+                        · {{ message.created_at|relative_time }}
+                        {% if message.category %}
+                        · {{ message.category.name }}
+                        {% endif %}
+                        {% if message.comments %}
+                        · {{ message.comments|length }} comment{{ '' if message.comments|length == 1 else 's' }}
+                        {% endif %}
+                    </span>
+                    {% set excerpt = plain_excerpt(message.body or '') %}
+                    {% if excerpt %}
+                    <span class="message-row-excerpt">{{ excerpt }}</span>
+                    {% endif %}
+                </span>
+                <span class="message-row-chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+            </a>
+            {% endfor %}
+        </div>
+        <p class="messages-empty-filter d-none" id="messagesFilterEmpty">No messages match that filter.</p>
+        {% elif not drafts %}
+        <div class="messages-empty-state">
+            <div class="messages-empty-inner">
+                <i class="bi bi-chat-left-text messages-empty-icon" aria-hidden="true"></i>
+                <div class="messages-empty-copy">
+                    <h2>No messages just yet</h2>
+                    <p>Post announcements, pitch ideas, and gather feedback while keeping discussions on-topic.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="newCategoryModal" tabindex="-1" aria-labelledby="newCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content messages-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newCategoryModalLabel">New category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="messages-input" id="newCategoryName" maxlength="120" placeholder="Category name">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn messages-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn messages-btn-primary" id="createCategoryBtn">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/project-messages.js') }}"></script>
+{% endblock %}

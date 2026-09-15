@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+{% block title %}To-dos — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell todos-shell">
+        <div class="shell-ribbon">
+            <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="shell-ribbon-title" title="{{ project.name }}">
+                {{ project.name }}
+            </a>
+            <div class="shell-ribbon-actions">
+                <div class="dropdown">
+                    <button type="button" class="shell-ribbon-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Project actions">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects.dashboard', project_id=project.id) }}">Back to project</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="todos-page-head">
+            <h1 class="todos-heading">To-dos</h1>
+            <div class="todos-actions">
+                <button type="button" class="btn todos-new-list" data-bs-toggle="modal" data-bs-target="#newListModal">
+                    <i class="bi bi-plus-lg"></i> New list
+                </button>
+                <div class="todos-filter-wrap">
+                    <input type="search" class="todos-filter" id="todosFilter" placeholder="Filter..." autocomplete="off">
+                </div>
+            </div>
+        </div>
+
+        {% if todos %}
+        <div class="todo-lists" id="todoLists">
+            {% for todo in todos %}
+            <section class="todo-list-block{% if todo.completed %} is-completed{% endif %}" id="todo-{{ todo.id }}" data-list-title="{{ todo.title|lower }}">
+                <header class="todo-list-header">
+                    <span class="todo-list-marker" aria-hidden="true"></span>
+                    <div class="todo-list-heading">
+                        <h2 class="todo-list-title">{{ todo.title }}</h2>
+                    </div>
+                    <div class="dropdown">
+                        <button type="button" class="checklist-dots" data-bs-toggle="dropdown" aria-expanded="false" aria-label="List actions">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <form method="post" action="{{ url_for('projects.toggle_todo', project_id=project.id, todo_id=todo.id) }}">
+                                    <button type="submit" class="dropdown-item">
+                                        {{ 'Mark list incomplete' if todo.completed else 'Mark list complete' }}
+                                    </button>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{{ url_for('projects.delete_todo', project_id=project.id, todo_id=todo.id) }}" onsubmit="return confirm('Delete this list and all its to-dos?');">
+                                    <button type="submit" class="dropdown-item text-danger">Delete list</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </header>
+
+                {% if todo.active_checklist_items %}
+                <ul class="todo-rows">
+                    {% for item in todo.active_checklist_items %}
+                    <li class="todo-row{% if item.completed %} is-completed{% endif %}" id="checklist-{{ item.id }}" data-todo-text="{{ item.text|lower }}">
+                        <div class="dropdown checklist-menu">
+                            <button type="button" class="checklist-dots" data-bs-toggle="dropdown" aria-expanded="false" aria-label="To-do actions">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <form method="post" action="{{ url_for('projects.toggle_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}">
+                                        <button type="submit" class="dropdown-item">
+                                            {{ 'Uncheck' if item.completed else 'Check' }}
+                                        </button>
+                                    </form>
+                                </li>
+                                <li>
+                                    <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editChecklist{{ item.id }}">
+                                        Open
+                                    </button>
+                                </li>
+                                <li>
+                                    <form method="post" action="{{ url_for('projects.archive_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}">
+                                        <button type="submit" class="dropdown-item">Archive</button>
+                                    </form>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="post" action="{{ url_for('projects.delete_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}" onsubmit="return confirm('Delete this to-do?');">
+                                        <button type="submit" class="dropdown-item text-danger">Delete</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <form method="post" action="{{ url_for('projects.toggle_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}">
+                            <button type="submit" class="todo-box" aria-label="{{ 'Uncheck' if item.completed else 'Check' }}">
+                                <i class="bi {{ 'bi-check-square' if item.completed else 'bi-square' }}"></i>
+                            </button>
+                        </form>
+
+                        <button type="button" class="todo-row-text todo-row-open" data-bs-toggle="modal" data-bs-target="#editChecklist{{ item.id }}">
+                            {{ item.text }}
+                        </button>
+
+                        <div class="todo-row-meta">
+                            {% if item.assignee %}
+                            <span class="todo-meta-chip" title="{{ item.assignee.name }}">
+                                <span class="todo-meta-avatar">{{ item.assignee.initials }}</span>
+                                <span class="todo-meta-label">{{ item.assignee.name.split()[0] }}</span>
+                            </span>
+                            {% endif %}
+                            {% if item.due_date %}
+                            <span class="todo-meta-chip">
+                                <i class="bi bi-calendar3"></i>
+                                {{ item.due_date.strftime('%a, %b %d') }}
+                            </span>
+                            {% endif %}
+                            {% if item.notes %}
+                            <span class="todo-meta-chip" title="Has notes"><i class="bi bi-sticky"></i></span>
+                            {% endif %}
+                            {% if item.images %}
+                            <span class="todo-meta-chip" title="{{ item.images|length }} image(s)">
+                                <i class="bi bi-image"></i> {{ item.images|length }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="modal fade todo-detail-modal" id="editChecklist{{ item.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                                <div class="modal-content todo-detail-sheet">
+                                    <form method="post" action="{{ url_for('projects.edit_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}" enctype="multipart/form-data" class="todo-detail-form" data-item-id="{{ item.id }}">
+                                        <div class="todo-detail-top">
+                                            <button type="button" class="btn-close todo-detail-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            <div class="todo-detail-title-row">
+                                                <span class="todo-box ghost" aria-hidden="true">
+                                                    <i class="bi {{ 'bi-check-square' if item.completed else 'bi-square' }}"></i>
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    class="todo-detail-title"
+                                                    id="checklistText{{ item.id }}"
+                                                    name="text"
+                                                    value="{{ item.text }}"
+                                                    maxlength="500"
+                                                    required
+                                                >
+                                            </div>
+
+                                            <div class="todo-detail-fields">
+                                                <div class="todo-detail-field">
+                                                    <label class="todo-detail-label" for="assignee{{ item.id }}">Assigned to</label>
+                                                    <div class="todo-detail-value">
+                                                        <div class="assignee-control" data-assignee-wrap>
+                                                            <select class="todo-detail-select" id="assignee{{ item.id }}" name="assigned_to" data-assignee-select>
+                                                                <option value="">Assign…</option>
+                                                                {% for member in members %}
+                                                                <option value="{{ member.id }}" data-initials="{{ member.initials }}" data-name="{{ member.name }}" {% if item.assigned_to == member.id %}selected{% endif %}>
+                                                                    {{ member.name }}
+                                                                </option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            <div class="assignee-pill{% if not item.assignee %} is-empty{% endif %}" data-assignee-pill>
+                                                                {% if item.assignee %}
+                                                                <span class="todo-meta-avatar">{{ item.assignee.initials }}</span>
+                                                                <span class="assignee-pill-name">{{ item.assignee.name }}</span>
+                                                                <button type="button" class="assignee-pill-clear" data-assignee-clear aria-label="Remove assignee">&times;</button>
+                                                                {% else %}
+                                                                <span class="todo-detail-placeholder">Assign…</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="todo-detail-field">
+                                                    <span class="todo-detail-label">When done</span>
+                                                    <div class="todo-detail-value">
+                                                        <span class="todo-detail-placeholder">Notify these people…</span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="todo-detail-field">
+                                                    <label class="todo-detail-label" for="dueDate{{ item.id }}">Due on</label>
+                                                    <div class="todo-detail-value">
+                                                        <input
+                                                            type="date"
+                                                            class="todo-detail-date"
+                                                            id="dueDate{{ item.id }}"
+                                                            name="due_date"
+                                                            value="{{ item.due_date.isoformat() if item.due_date else '' }}"
+                                                        >
+                                                        {% if not item.due_date %}
+                                                        <span class="todo-detail-placeholder todo-detail-date-ph">Select a due date…</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="todo-detail-notes-block">
+                                            <div class="todo-detail-label">Notes</div>
+                                            <div class="notes-editor">
+                                                <div class="notes-toolbar">
+                                                    <label class="notes-tool" title="Insert image" for="images{{ item.id }}">
+                                                        <i class="bi bi-image"></i>
+                                                    </label>
+                                                    <input type="file" id="images{{ item.id }}" name="images" accept="image/*" multiple hidden>
+                                                    <span class="notes-tool is-disabled" title="Bold"><strong>B</strong></span>
+                                                    <span class="notes-tool is-disabled" title="Italic"><em>I</em></span>
+                                                    <span class="notes-tool is-disabled" title="Strikethrough"><s>S</s></span>
+                                                    <span class="notes-tool is-disabled" title="Link"><i class="bi bi-link-45deg"></i></span>
+                                                    <span class="notes-tool is-disabled" title="List"><i class="bi bi-list-ul"></i></span>
+                                                </div>
+                                                <div class="notes-body">
+                                                    {% if item.images %}
+                                                    <div class="notes-images">
+                                                        {% for image in item.images %}
+                                                        <div class="notes-image-card">
+                                                            <a href="{{ url_for('projects.checklist_image', project_id=project.id, todo_id=todo.id, item_id=item.id, image_id=image.id) }}" target="_blank" rel="noopener">
+                                                                <img src="{{ url_for('projects.checklist_image', project_id=project.id, todo_id=todo.id, item_id=item.id, image_id=image.id) }}" alt="{{ image.original_filename }}">
+                                                            </a>
+                                                            <form method="post" action="{{ url_for('projects.delete_checklist_image', project_id=project.id, todo_id=todo.id, item_id=item.id, image_id=image.id) }}" onsubmit="return confirm('Remove this image?');">
+                                                                <button type="submit" class="checklist-image-remove" title="Remove image" aria-label="Remove image">
+                                                                    <i class="bi bi-x-lg"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% endif %}
+                                                    <textarea
+                                                        class="notes-textarea"
+                                                        id="notes{{ item.id }}"
+                                                        name="notes"
+                                                        rows="8"
+                                                        placeholder="Add notes…"
+                                                    >{{ item.notes or '' }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="todo-detail-footer">
+                                            <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Close</button>
+                                            <button type="submit" class="btn mc-btn mc-btn-primary">Save</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if todo.archived_checklist_items %}
+                <details class="archived-checklist">
+                    <summary>Archived ({{ todo.archived_checklist_items|length }})</summary>
+                    <ul class="todo-rows">
+                        {% for item in todo.archived_checklist_items %}
+                        <li class="todo-row is-archived{% if item.completed %} is-completed{% endif %}">
+                            <div class="dropdown checklist-menu">
+                                <button type="button" class="checklist-dots" data-bs-toggle="dropdown" aria-expanded="false" aria-label="To-do actions">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <form method="post" action="{{ url_for('projects.toggle_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}">
+                                            <button type="submit" class="dropdown-item">{{ 'Uncheck' if item.completed else 'Check' }}</button>
+                                        </form>
+                                    </li>
+                                    <li>
+                                        <form method="post" action="{{ url_for('projects.archive_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}">
+                                            <button type="submit" class="dropdown-item">Restore</button>
+                                        </form>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="post" action="{{ url_for('projects.delete_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}" onsubmit="return confirm('Delete this to-do?');">
+                                            <button type="submit" class="dropdown-item text-danger">Delete</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                            <form method="post" action="{{ url_for('projects.toggle_checklist_item', project_id=project.id, todo_id=todo.id, item_id=item.id) }}">
+                                <button type="submit" class="todo-box" aria-label="Toggle">
+                                    <i class="bi {{ 'bi-check-square' if item.completed else 'bi-square' }}"></i>
+                                </button>
+                            </form>
+                            <span class="todo-row-text">{{ item.text }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endif %}
+
+                <form class="add-todo-row" method="post" action="{{ url_for('projects.add_checklist_item', project_id=project.id, todo_id=todo.id) }}">
+                    <span class="todo-box ghost" aria-hidden="true"><i class="bi bi-square"></i></span>
+                    <input
+                        type="text"
+                        name="text"
+                        class="add-todo-input"
+                        placeholder="Add a to-do"
+                        maxlength="500"
+                        required
+                        autocomplete="off"
+                    >
+                </form>
+            </section>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="home-panel-empty" style="min-height: 10rem;">
+            <h2>No lists yet</h2>
+            <p>Create a list, then add to-dos under it.</p>
+            <button type="button" class="btn todos-new-list mt-2" data-bs-toggle="modal" data-bs-target="#newListModal">
+                <i class="bi bi-plus-lg"></i> New list
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="newListModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('projects.create_todo', project_id=project.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">New list</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label mc-form-label" for="newListTitle">List name</label>
+                    <input type="text" class="form-control mc-form-control" id="newListTitle" name="title" maxlength="300" required autofocus placeholder="e.g. Promotions and Deals">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn mc-btn mc-btn-primary">Create list</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var filter = document.getElementById('todosFilter');
+  if (filter) {
+    filter.addEventListener('input', function () {
+      var q = (filter.value || '').trim().toLowerCase();
+      document.querySelectorAll('.todo-list-block').forEach(function (block) {
+        var title = block.getAttribute('data-list-title') || '';
+        var rows = block.querySelectorAll('.todo-row');
+        var anyRow = false;
+        rows.forEach(function (row) {
+          var text = row.getAttribute('data-todo-text') || '';
+          var show = !q || text.indexOf(q) !== -1 || title.indexOf(q) !== -1;
+          row.style.display = show ? '' : 'none';
+          if (show) anyRow = true;
+        });
+        block.style.display = (!q || title.indexOf(q) !== -1 || anyRow) ? '' : 'none';
+      });
+    });
+  }
+
+  function syncAssigneePill(wrap) {
+    var select = wrap.querySelector('[data-assignee-select]');
+    var pill = wrap.querySelector('[data-assignee-pill]');
+    if (!select || !pill) return;
+    var opt = select.options[select.selectedIndex];
+    if (!opt || !opt.value) {
+      pill.classList.add('is-empty');
+      pill.innerHTML = '<span class="todo-detail-placeholder">Assign…</span>';
+      return;
+    }
+    pill.classList.remove('is-empty');
+    pill.innerHTML =
+      '<span class="todo-meta-avatar">' + (opt.getAttribute('data-initials') || '?') + '</span>' +
+      '<span class="assignee-pill-name">' + (opt.getAttribute('data-name') || opt.textContent) + '</span>' +
+      '<button type="button" class="assignee-pill-clear" data-assignee-clear aria-label="Remove assignee">&times;</button>';
+  }
+
+  function syncDatePlaceholder(input) {
+    var ph = input.parentElement.querySelector('.todo-detail-date-ph');
+    if (input.value) {
+      input.classList.add('has-value');
+      if (ph) ph.style.display = 'none';
+    } else {
+      input.classList.remove('has-value');
+      if (!ph) {
+        ph = document.createElement('span');
+        ph.className = 'todo-detail-placeholder todo-detail-date-ph';
+        ph.textContent = 'Select a due date…';
+        input.parentElement.appendChild(ph);
+      } else {
+        ph.style.display = '';
+      }
+    }
+  }
+
+  document.querySelectorAll('[data-assignee-wrap]').forEach(syncAssigneePill);
+  document.querySelectorAll('.todo-detail-date').forEach(syncDatePlaceholder);
+
+  document.addEventListener('change', function (event) {
+    if (event.target.matches('[data-assignee-select]')) {
+      syncAssigneePill(event.target.closest('[data-assignee-wrap]'));
+    }
+    if (event.target.matches('.todo-detail-date')) {
+      syncDatePlaceholder(event.target);
+    }
+  });
+
+  document.addEventListener('click', function (event) {
+    var clear = event.target.closest('[data-assignee-clear]');
+    if (clear) {
+      event.preventDefault();
+      var wrap = clear.closest('[data-assignee-wrap]');
+      var select = wrap.querySelector('[data-assignee-select]');
+      select.value = '';
+      syncAssigneePill(wrap);
+      return;
+    }
+    var pill = event.target.closest('[data-assignee-pill]');
+    if (pill && !event.target.closest('[data-assignee-clear]')) {
+      var wrap = pill.closest('[data-assignee-wrap]');
+      var select = wrap.querySelector('[data-assignee-select]');
+      select.focus();
+      select.click();
+    }
+    var datePh = event.target.closest('.todo-detail-date-ph');
+    if (datePh) {
+      var input = datePh.parentElement.querySelector('.todo-detail-date');
+      if (input) {
+        input.focus();
+        if (input.showPicker) input.showPicker();
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

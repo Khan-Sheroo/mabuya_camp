@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "projects/_macros.html" import project_card %}
+{% block title %}Home — Mabuya Camp{% endblock %}
+
+{% block content %}
+<div class="home-layout">
+    <aside class="home-panel home-panel-left">
+        <h2 class="home-hello">Hello, {{ current_user.name.split()[0] }}</h2>
+        {% if current_user.role != 'member' %}
+        <a href="{{ url_for('projects.create') }}" class="home-add-project" title="New project" aria-label="New project">
+            <i class="bi bi-plus-lg"></i>
+            <span>New project</span>
+        </a>
+        {% endif %}
+    </aside>
+
+    <section class="home-panel home-panel-center">
+        <h3 class="home-panel-title">Active projects</h3>
+        {% if projects %}
+            <div class="project-grid">
+                {% for project in projects %}
+                    {{ project_card(project, colors, can_manage=project.id in manageable_ids) }}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="home-panel-empty">
+                <h2>No projects yet</h2>
+                <p>Create your first project to start organizing your team's work.</p>
+            </div>
+        {% endif %}
+
+        {% if archived_count %}
+        <p class="home-archived-link">
+            <a href="{{ url_for('projects.archived') }}">View archived projects →</a>
+        </p>
+        {% endif %}
+    </section>
+
+    <aside class="home-panel home-panel-right">
+        <h3 class="home-panel-title">Recent activity</h3>
+        {% if recent_activity %}
+        <ul class="activity-list">
+            {% for item in recent_activity %}
+            <li>
+                <a href="{{ url_for('projects.dashboard', project_id=item.project.id) }}">
+                    <span class="activity-dot" style="background: {{ colors.get(item.project.color, colors.get('teal')) }};"></span>
+                    <span class="activity-body">
+                        <strong>{{ item.project.name }}</strong>
+                        <span class="activity-text">{{ item.text }}</span>
+                        <span class="activity-time">{{ item.at|relative_time }}</span>
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="activity-empty">No recent activity</p>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

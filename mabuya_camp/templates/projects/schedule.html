@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Schedule — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell schedule-shell"
+         id="projectScheduleApp"
+         data-project-id="{{ project.id }}"
+         data-window-start="{{ window_start.isoformat() }}"
+         data-view="{{ active_view }}">
+        <div class="shell-ribbon">
+            <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="shell-ribbon-title" title="{{ project.name }}">
+                {{ project.name }}
+            </a>
+            <div class="shell-ribbon-actions">
+                <div class="dropdown">
+                    <button type="button" class="shell-ribbon-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Project actions">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects.dashboard', project_id=project.id) }}">Back to project</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="schedule-page-head">
+            <h1 class="schedule-heading">Schedule</h1>
+        </div>
+
+        <div class="schedule-toolbar">
+            <button type="button" class="btn schedule-new-btn" id="newEventBtn">
+                <i class="bi bi-plus-lg"></i> New event
+            </button>
+
+            <div class="schedule-view-toggle" role="group" aria-label="View">
+                <a href="{{ url_for('projects.schedule', project_id=project.id, start=window_start.isoformat(), view='calendar') }}"
+                   class="schedule-view-btn{% if active_view == 'calendar' %} is-active{% endif %}">Calendar</a>
+                <a href="{{ url_for('projects.schedule', project_id=project.id, start=window_start.isoformat(), view='agenda') }}"
+                   class="schedule-view-btn{% if active_view == 'agenda' %} is-active{% endif %}">Agenda</a>
+            </div>
+
+            <div class="schedule-filter-wrap">
+                <input type="search" class="schedule-filter" id="scheduleFilter" placeholder="Filter..." autocomplete="off">
+            </div>
+        </div>
+
+        <div class="schedule-msg schedule-msg-error d-none" id="scheduleError"></div>
+
+        {% if active_view == 'calendar' %}
+        <div class="schedule-nav" id="scheduleNav">
+            <button type="button" class="schedule-nav-arrow" id="schedulePrevBtn" aria-label="Previous weeks">&larr;</button>
+            <span class="schedule-nav-label" id="scheduleNavLabel">{{ nav_label }}</span>
+            <button type="button" class="schedule-nav-arrow" id="scheduleNextBtn" aria-label="Next weeks">&rarr;</button>
+        </div>
+
+        <div class="schedule-calendar" id="scheduleCalendar"
+             data-range-start="{{ window_start.isoformat() }}"
+             data-range-end="{{ window_end.isoformat() }}">
+            <div class="schedule-weekday-row">
+                {% for day in weekdays %}
+                <div class="schedule-weekday">{{ day }}</div>
+                {% endfor %}
+            </div>
+            <div class="schedule-weeks" id="scheduleWeeks">
+                {% include 'projects/_schedule_weeks.html' %}
+            </div>
+            <div class="schedule-scroll-sentinel schedule-scroll-sentinel-bottom" id="scheduleScrollBottom" aria-hidden="true"></div>
+        </div>
+        <div class="schedule-scroll-hint" id="scheduleScrollHint">Scroll for more dates</div>
+        {% else %}
+        <div class="schedule-agenda" id="scheduleAgenda">
+            {% if agenda_items %}
+            {% set ns = namespace(prev=None) %}
+            {% for item in agenda_items %}
+                {% if item.event_date != ns.prev %}
+                {% set ns.prev = item.event_date %}
+                <h2 class="schedule-agenda-date">{{ item.display_date }}</h2>
+                {% endif %}
+                <article class="schedule-item schedule-agenda-item{% if item.completed %} is-completed{% endif %}"
+                         data-kind="{{ item.kind }}"
+                         data-id="{{ item.id }}"
+                         data-search="{{ (item.title ~ ' ' ~ item.subtitle)|lower }}"
+                         data-title="{{ item.title }}"
+                         data-subtitle="{{ item.subtitle }}"
+                         data-notes="{{ item.notes }}"
+                         data-date="{{ item.event_date }}"
+                         data-todo-id="{{ item.todo_id if item.kind == 'todo' else '' }}">
+                    {% if item.kind == 'event' %}
+                    <button type="button" class="schedule-item-check" data-toggle-event="{{ item.id }}" aria-label="Toggle complete">
+                        <i class="bi {{ 'bi-check-square' if item.completed else 'bi-square' }}"></i>
+                    </button>
+                    {% else %}
+                    <span class="schedule-item-check is-static" aria-hidden="true">
+                        <i class="bi {{ 'bi-check-square' if item.completed else 'bi-square' }}"></i>
+                    </span>
+                    {% endif %}
+                    <div class="schedule-item-body">
+                        <div class="schedule-item-title-row">
+                            <button type="button" class="schedule-item-title" data-open-item>{{ item.title }}</button>
+                            {% if item.has_notes %}
+                            <span class="schedule-info-dot" title="Has notes"><i class="bi bi-info-circle-fill"></i></span>
+                            {% endif %}
+                        </div>
+                        {% if item.subtitle %}
+                        <div class="schedule-item-sub">{{ item.subtitle }}</div>
+                        {% endif %}
+                        {% if item.assignees %}
+                        <div class="schedule-item-avatars">
+                            {% for person in item.assignees %}
+                            <span class="schedule-avatar" style="--i: {{ loop.index0 }}" title="{{ person.name }}">{{ person.initials }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+            {% else %}
+            <p class="schedule-empty">No upcoming events. Click <strong>New event</strong> to add one.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{# New / edit event modal #}
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content schedule-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="eventModalLabel">New event</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="eventId">
+                <div class="schedule-field mb-3">
+                    <label for="eventTitle">Title</label>
+                    <input type="text" class="schedule-input" id="eventTitle" maxlength="300" placeholder="What’s happening?" required>
+                </div>
+                <div class="schedule-field mb-3">
+                    <label for="eventDate">Date</label>
+                    <input type="date" class="schedule-input" id="eventDate" required>
+                </div>
+                <div class="schedule-field mb-3">
+                    <label for="eventSubtitle">Category / subtitle</label>
+                    <input type="text" class="schedule-input" id="eventSubtitle" maxlength="200" placeholder="Optional">
+                </div>
+                <div class="schedule-field mb-3">
+                    <label for="eventNotes">Notes</label>
+                    <textarea class="schedule-input" id="eventNotes" rows="3" placeholder="Optional notes"></textarea>
+                </div>
+                {% if members %}
+                <div class="schedule-field">
+                    <label>People</label>
+                    <div class="schedule-assignee-list" id="eventAssignees">
+                        {% for user in members %}
+                        <label class="schedule-assignee-option">
+                            <input type="checkbox" name="assignee_ids" value="{{ user.id }}">
+                            <span class="schedule-avatar" style="--i: {{ loop.index0 }}">{{ user.initials }}</span>
+                            <span>{{ user.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer schedule-modal-footer">
+                <button type="button" class="btn schedule-btn-danger d-none" id="deleteEventBtn">Delete</button>
+                <div class="schedule-modal-footer-end">
+                    <button type="button" class="btn schedule-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn schedule-btn-primary" id="saveEventBtn">Save event</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Todo item peek (due dates from to-dos) #}
+<div class="modal fade" id="todoPeekModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content schedule-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="todoPeekTitle">To-do</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="schedule-peek-sub" id="todoPeekSub"></p>
+                <p class="schedule-peek-notes" id="todoPeekNotes"></p>
+            </div>
+            <div class="modal-footer">
+                <a href="#" class="btn schedule-btn-primary" id="todoPeekLink">Open in To-dos</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/project-schedule.js') }}"></script>
+{% endblock %}

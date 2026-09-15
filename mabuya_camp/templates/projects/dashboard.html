@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "projects/_macros.html" import project_header %}
+{% block title %}{{ project.name }} — Mabuya Camp{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('home.index') }}" class="back-link"><i class="bi bi-arrow-left"></i> Home</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell">
+        {{ project_header(project, colors, can_manage) }}
+
+        <div class="module-grid">
+            <a class="module-tile" href="{{ url_for('projects.messages', project_id=project.id) }}">
+                <span class="module-icon"><i class="bi bi-chat-square-text"></i></span>
+                <h2>Message board</h2>
+                <p>Discussions and announcements</p>
+            </a>
+            <a class="module-tile" href="{{ url_for('projects.todos', project_id=project.id) }}">
+                <span class="module-icon"><i class="bi bi-check2-square"></i></span>
+                <h2>To-dos</h2>
+                <p>Tasks and checklists</p>
+            </a>
+            <a class="module-tile" href="{{ url_for('projects.files', project_id=project.id) }}">
+                <span class="module-icon"><i class="bi bi-folder2-open"></i></span>
+                <h2>Docs &amp; files</h2>
+                <p>Documents and uploads</p>
+            </a>
+            <a class="module-tile" href="{{ url_for('projects.schedule', project_id=project.id) }}">
+                <span class="module-icon"><i class="bi bi-calendar3"></i></span>
+                <h2>Calendar schedule</h2>
+                <p>Events and deadlines</p>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if can_manage and project.is_active %}
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Archive "{{ project.name }}"?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                The project will be removed from your active projects but can be restored later.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{{ url_for('projects.archive', project_id=project.id) }}">
+                    <button type="submit" class="btn mc-btn mc-btn-primary">Archive Project</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if can_manage and project.is_archived %}
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete "{{ project.name }}"?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                This permanently deletes the project. This cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{{ url_for('projects.delete', project_id=project.id) }}">
+                    <button type="submit" class="btn mc-btn mc-btn-danger">Delete Project</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "projects/_macros.html" import project_nav, project_header %}
+{% block title %}{{ module_name }} — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> {{ project.name }}</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell">
+        {{ project_header(project, colors, can_manage) }}
+        {{ project_nav(project, active_tab) }}
+
+        <div class="empty-state" style="margin-top: 0; box-shadow: none;">
+            <h2>{{ module_name }}</h2>
+            <p>{{ module_blurb }}</p>
+            <p class="mb-0" style="color: var(--mc-muted); font-size: 0.9rem;">Coming in a later phase.</p>
+        </div>
+    </div>
+</div>
+
+{% if can_manage and project.is_active %}
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Archive "{{ project.name }}"?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                The project will be removed from your active projects but can be restored later.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{{ url_for('projects.archive', project_id=project.id) }}">
+                    <button type="submit" class="btn mc-btn mc-btn-primary">Archive Project</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

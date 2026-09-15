@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Login — Mabuya Camp{% endblock %}
+{% block shell_class %}auth-shell{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+    <div class="login-card">
+        <h1>Mabuya Camp</h1>
+        <p class="subtitle">Sign in to your workspace</p>
+        <form method="post" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+            <div class="mb-3">
+                <label class="form-label mc-form-label" for="email">Email</label>
+                <input type="email" class="form-control mc-form-control" id="email" name="email" required autofocus autocomplete="username">
+            </div>
+            <div class="mb-3">
+                <label class="form-label mc-form-label" for="password">Password</label>
+                <input type="password" class="form-control mc-form-control" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" value="1" id="remember" name="remember">
+                <label class="form-check-label" for="remember">Remember me</label>
+            </div>
+            <button type="submit" class="btn mc-btn mc-btn-primary w-100">Log In</button>
+        </form>
+        <p class="mt-3 mb-0 text-center" style="color: var(--mc-muted); font-size: 0.9rem;">
+            <a href="#" class="disabled" tabindex="-1" aria-disabled="true" style="pointer-events: none; opacity: 0.6;">Forgot password?</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

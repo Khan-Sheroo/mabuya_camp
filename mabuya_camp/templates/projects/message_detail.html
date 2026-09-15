@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ message.title }} — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.messages', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell messages-shell">
+        <div class="shell-ribbon">
+            <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="shell-ribbon-title" title="{{ project.name }}">
+                {{ project.name }}
+            </a>
+            <div class="shell-ribbon-actions">
+                <div class="dropdown">
+                    <button type="button" class="shell-ribbon-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Message actions">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects.messages', project_id=project.id) }}">All messages</a>
+                        </li>
+                        {% if message.created_by == current_user.id or can_manage %}
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects.edit_message', project_id=project.id, message_id=message.id) }}">Edit</a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{{ url_for('projects.delete_message', project_id=project.id, message_id=message.id) }}"
+                                  onsubmit="return confirm('Delete this message?');">
+                                <button type="submit" class="dropdown-item text-danger">Delete</button>
+                            </form>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <article class="message-detail">
+            {% if message.category %}
+            <div class="message-detail-category">{{ message.category.name }}</div>
+            {% endif %}
+            <h1 class="message-detail-title">{{ message.title }}</h1>
+            <div class="message-detail-byline">
+                <span class="message-row-avatar" style="--i: 0">{{ message.creator.initials if message.creator else '?' }}</span>
+                <div>
+                    <div class="message-detail-author">{{ message.creator.name if message.creator else 'Someone' }}</div>
+                    <div class="message-detail-when">{{ message.created_at|relative_time }}
+                        {% if message.updated_at and message.updated_at != message.created_at %}
+                        · edited
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="message-detail-body">{{ message.body|safe }}</div>
+        </article>
+
+        <section class="message-comments">
+            <h2 class="message-comments-heading">
+                {{ comments|length }} comment{{ '' if comments|length == 1 else 's' }}
+            </h2>
+
+            {% for comment in comments %}
+            <div class="message-comment" id="comment-{{ comment.id }}">
+                <span class="message-row-avatar" style="--i: {{ loop.index0 }}">{{ comment.creator.initials if comment.creator else '?' }}</span>
+                <div class="message-comment-main">
+                    <div class="message-comment-meta">
+                        <strong>{{ comment.creator.name if comment.creator else 'Someone' }}</strong>
+                        <span>{{ comment.created_at|relative_time }}</span>
+                    </div>
+                    <div class="message-comment-body">{{ comment.body|e|replace('\n', '<br>')|safe }}</div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <form method="post" action="{{ url_for('projects.add_message_comment', project_id=project.id, message_id=message.id) }}" class="message-comment-form">
+                <label for="commentBody" class="visually-hidden">Add a comment</label>
+                <textarea class="messages-input messages-textarea" id="commentBody" name="body" rows="3"
+                          placeholder="Add a comment…" required></textarea>
+                <button type="submit" class="btn messages-btn-primary">Post comment</button>
+            </form>
+        </section>
+    </div>
+</div>
+{% endblock %}

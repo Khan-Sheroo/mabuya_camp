@@ -1,0 +1,94 @@
+{% macro project_nav(project, active_tab='overview') %}
+<nav class="project-tabs" aria-label="Project modules">
+    <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="{% if active_tab == 'overview' %}active{% endif %}">Overview</a>
+    <a href="{{ url_for('projects.messages', project_id=project.id) }}" class="{% if active_tab == 'messages' %}active{% endif %}">Message board</a>
+    <a href="{{ url_for('projects.todos', project_id=project.id) }}" class="{% if active_tab == 'todos' %}active{% endif %}">To-dos</a>
+    <a href="{{ url_for('projects.files', project_id=project.id) }}" class="{% if active_tab == 'files' %}active{% endif %}">Docs &amp; files</a>
+    <a href="{{ url_for('projects.schedule', project_id=project.id) }}" class="{% if active_tab == 'schedule' %}active{% endif %}">Calendar schedule</a>
+</nav>
+{% endmacro %}
+
+{% macro project_color(project, colors) -%}
+{{ colors.get(project.color, colors.get('teal', '#2A9D8F')) }}
+{%- endmacro %}
+
+{% macro project_card(project, colors, can_manage=false) %}
+{% set hex = project_color(project, colors) %}
+<article class="project-card" style="--card-color: {{ hex }};" data-project-id="{{ project.id }}">
+    <a class="project-card-link" href="{{ url_for('projects.dashboard', project_id=project.id) }}">
+        <h3>{{ project.name }}</h3>
+        <div class="desc">{{ project.description or 'No description yet.' }}</div>
+        <div class="project-meta">
+            <span><i class="bi bi-people"></i> {{ project.member_count }} {{ 'person' if project.member_count == 1 else 'people' }}</span>
+        </div>
+    </a>
+    {% if can_manage %}
+    <div class="card-color-picker">
+        <button type="button" class="card-color-btn" aria-label="Change project colour" aria-expanded="false" title="Change colour">
+            <i class="bi bi-palette2" aria-hidden="true"></i>
+        </button>
+        <div class="card-color-menu" hidden>
+            {% for key, value in colors.items() %}
+            <button type="button"
+                    class="card-color-swatch{% if project.color == key %} is-selected{% endif %}"
+                    style="background: {{ value }};"
+                    data-color="{{ key }}"
+                    data-hex="{{ value }}"
+                    title="{{ key|capitalize }}"
+                    aria-label="{{ key|capitalize }}"></button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</article>
+{% endmacro %}
+
+{% macro project_header(project, colors, can_manage=false) %}
+<div class="project-header">
+    <div class="project-title-block">
+        {% if project.member_users %}
+        <div class="people-ribbon" aria-label="People on this project">
+            {% for user in project.member_users %}
+            <span class="people-ribbon-avatar" title="{{ user.name }}" style="--i: {{ loop.index0 }};">
+                {{ user.initials }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <h1>
+            <span class="color-dot" style="background: {{ project_color(project, colors) }};"></span>
+            {{ project.name }}
+            {% if project.is_archived %}
+            <span class="badge text-bg-secondary align-middle ms-1" style="font-family: var(--font-body); font-size: 0.7rem; font-weight: 600;">Archived</span>
+            {% endif %}
+        </h1>
+        {% if project.description %}
+        <p class="mb-0" style="color: var(--mc-muted); max-width: 40rem;">{{ project.description }}</p>
+        {% endif %}
+    </div>
+    {% if can_manage %}
+    <div class="dropdown">
+        <button class="btn mc-btn mc-btn-ghost" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            {% if project.is_active %}
+            <li><a class="dropdown-item" href="{{ url_for('projects.edit', project_id=project.id) }}">Edit Project</a></li>
+            <li>
+                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#archiveModal">Archive Project</button>
+            </li>
+            {% else %}
+            <li>
+                <form method="post" action="{{ url_for('projects.restore', project_id=project.id) }}">
+                    <button type="submit" class="dropdown-item">Restore Project</button>
+                </form>
+            </li>
+            <li>
+                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete Project</button>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}

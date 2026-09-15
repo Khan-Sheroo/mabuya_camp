@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Docs & Files — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell files-shell"
+         id="projectFilesApp"
+         data-project-id="{{ project.id }}">
+        <div class="shell-ribbon">
+            <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="shell-ribbon-title" title="{{ project.name }}">
+                {{ project.name }}
+            </a>
+            <div class="shell-ribbon-actions">
+                <div class="dropdown">
+                    <button type="button" class="shell-ribbon-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Project actions">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects.dashboard', project_id=project.id) }}">Back to project</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="files-page-head">
+            <h1 class="files-heading">Docs &amp; Files</h1>
+        </div>
+
+        <div class="files-toolbar">
+            <div class="dropdown">
+                <button type="button" class="btn files-new-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-plus-lg"></i> New…
+                </button>
+                <ul class="dropdown-menu">
+                    <li><button type="button" class="dropdown-item" id="newUploadBtn">Upload files…</button></li>
+                    <li><button type="button" class="dropdown-item" id="newFolderBtn">New folder…</button></li>
+                </ul>
+            </div>
+
+            <div class="files-pills" role="group" aria-label="View">
+                <button type="button" class="files-pill is-active" data-view="all" id="viewAllBtn">All files</button>
+                <button type="button" class="files-pill" data-view="images" id="viewImagesBtn">Images</button>
+            </div>
+
+            <div class="dropdown">
+                <button type="button" class="files-toolbar-dd" data-bs-toggle="dropdown" aria-expanded="false" id="fileTypeBtn">
+                    File type <i class="bi bi-chevron-down"></i>
+                </button>
+                <ul class="dropdown-menu" id="fileTypeMenu">
+                    <li><button type="button" class="dropdown-item is-active" data-type="all">All types</button></li>
+                    <li><button type="button" class="dropdown-item" data-type="images">Images</button></li>
+                    <li><button type="button" class="dropdown-item" data-type="pdf">PDFs</button></li>
+                    <li><button type="button" class="dropdown-item" data-type="other">Other</button></li>
+                </ul>
+            </div>
+
+            <div class="dropdown">
+                <button type="button" class="files-toolbar-dd" data-bs-toggle="dropdown" aria-expanded="false" id="sortBtn">
+                    Sort manually <i class="bi bi-chevron-down"></i>
+                </button>
+                <ul class="dropdown-menu" id="sortMenu">
+                    <li><button type="button" class="dropdown-item is-active" data-sort="manual">Sort manually</button></li>
+                    <li><button type="button" class="dropdown-item" data-sort="name">Name A–Z</button></li>
+                    <li><button type="button" class="dropdown-item" data-sort="newest">Newest first</button></li>
+                </ul>
+            </div>
+
+            <div class="files-filter-wrap">
+                <input type="search" class="files-filter" id="filesFilter" placeholder="Filter..." autocomplete="off">
+            </div>
+
+            <label class="files-keep-open">
+                <span>Keep folders open</span>
+                <input type="checkbox" id="keepFoldersOpen" role="switch">
+                <span class="files-switch" aria-hidden="true"></span>
+            </label>
+        </div>
+
+        <div class="files-msg files-msg-error d-none" id="folderError"></div>
+        <div class="files-msg files-msg-error d-none" id="uploadError"></div>
+        <div class="files-msg files-msg-ok d-none" id="uploadSuccess"></div>
+
+        <div class="docs-folder-list" id="folderBar">
+            {% for folder in folders %}
+            {% set folder_docs = documents|selectattr('folder_id', 'equalto', folder.id)|list %}
+            <section class="docs-folder-block drop-target"
+                     data-folder="{{ folder.id }}"
+                     data-folder-name="{{ folder.name|lower }}"
+                     data-sort-name="{{ folder.name|lower }}"
+                     data-sort-date="{{ folder.created_at or '' }}">
+                <div class="docs-folder-row">
+                    <button type="button" class="docs-folder-toggle" aria-expanded="false" aria-label="Toggle folder">
+                        <span class="docs-folder-icon" aria-hidden="true">
+                            <i class="bi bi-folder2"></i>
+                            <span class="docs-folder-plus">+</span>
+                        </span>
+                        <span class="docs-folder-text">
+                            <span class="docs-folder-title">{{ folder.name }}</span>
+                            <span class="docs-folder-count">{{ folder.document_count }} item{{ '' if folder.document_count == 1 else 's' }}</span>
+                        </span>
+                    </button>
+                    <div class="dropdown">
+                        <button type="button" class="docs-folder-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Folder actions">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><button type="button" class="dropdown-item folder-upload-btn" data-folder="{{ folder.id }}">Upload into folder</button></li>
+                            <li><button type="button" class="dropdown-item folder-rename-btn" data-folder="{{ folder.id }}" data-name="{{ folder.name }}">Rename</button></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item text-danger folder-delete-btn" data-folder="{{ folder.id }}">Delete folder</button></li>
+                        </ul>
+                    </div>
+                </div>
+                <ul class="docs-file-list file-rows">
+                    {% for doc in folder_docs %}
+                    {% include 'projects/_file_row.html' %}
+                    {% else %}
+                    <li class="docs-folder-empty">No files in this folder yet.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endfor %}
+
+            {% set unfiled_docs = documents|rejectattr('folder_id')|list %}
+            <section class="docs-folder-block drop-target docs-folder-unfiled"
+                     data-folder="unfiled"
+                     data-folder-name="unfiled"
+                     data-sort-name="unfiled"
+                     data-sort-date="">
+                <div class="docs-folder-row">
+                    <button type="button" class="docs-folder-toggle" aria-expanded="false" aria-label="Toggle unfiled">
+                        <span class="docs-folder-icon is-unfiled" aria-hidden="true">
+                            <i class="bi bi-inbox"></i>
+                        </span>
+                        <span class="docs-folder-text">
+                            <span class="docs-folder-title">Unfiled</span>
+                            <span class="docs-folder-count">{{ unfiled_count }} item{{ '' if unfiled_count == 1 else 's' }}</span>
+                        </span>
+                    </button>
+                    <div class="dropdown">
+                        <button type="button" class="docs-folder-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Unfiled actions">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><button type="button" class="dropdown-item folder-upload-btn" data-folder="">Upload here</button></li>
+                        </ul>
+                    </div>
+                </div>
+                <ul class="docs-file-list file-rows">
+                    {% for doc in unfiled_docs %}
+                    {% include 'projects/_file_row.html' %}
+                    {% else %}
+                    <li class="docs-folder-empty">No unfiled files yet.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            {% if not folders and not documents %}
+            <p class="files-empty" id="emptyFilesMsg">No folders or files yet. Click <strong>New…</strong> to get started.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# Upload modal #}
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content files-preview-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">Upload files</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="files-field mb-3">
+                    <label for="uploadFolderSelect">Upload into</label>
+                    <select id="uploadFolderSelect" class="files-select">
+                        <option value="">Unfiled</option>
+                        {% for folder in folders %}
+                        <option value="{{ folder.id }}">{{ folder.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="files-field mb-3">
+                    <label for="fileInput">Documents / images</label>
+                    <input type="file" class="files-file-input" id="fileInput" multiple
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.heif,image/*,application/pdf">
+                </div>
+                <div class="upload-queue" id="uploadQueue">
+                    <div class="upload-queue-list" id="uploadQueueBody"></div>
+                    <div class="upload-queue-actions">
+                        <input type="text" class="files-input" id="applyAllLabel" maxlength="200"
+                               placeholder="Apply same label to all…">
+                        <button type="button" class="btn files-btn-ghost" id="applyAllLabelBtn">Apply to all</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn files-btn-ghost" id="clearQueueBtn" disabled>Clear</button>
+                <button type="button" class="btn files-btn-primary" id="uploadBtn" disabled>Upload selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# New folder modal #}
+<div class="modal fade" id="newFolderModal" tabindex="-1" aria-labelledby="newFolderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content files-preview-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newFolderModalLabel">New folder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="newFolderName" class="visually-hidden">Folder name</label>
+                <input type="text" class="files-input" id="newFolderName" maxlength="120" placeholder="Folder name" autofocus>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn files-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn files-btn-primary" id="createFolderBtn">Create folder</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Rename folder modal #}
+<div class="modal fade" id="renameFolderModal" tabindex="-1" aria-labelledby="renameFolderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content files-preview-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="renameFolderModalLabel">Rename folder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="renameFolderId">
+                <label for="renameFolderInput" class="visually-hidden">Folder name</label>
+                <input type="text" class="files-input" id="renameFolderInput" maxlength="120" placeholder="Folder name">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn files-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn files-btn-primary" id="renameFolderBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Preview modal #}
+<div class="modal fade" id="projectFilePreviewModal" tabindex="-1" aria-labelledby="projectFilePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content files-preview-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="projectFilePreviewModalLabel">Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="projectFilePreviewBody"></div>
+            <div class="modal-footer">
+                <a href="#" class="btn files-btn-ghost" id="projectFilePreviewDownload">Download</a>
+                <button type="button" class="btn files-btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/project-files.js') }}"></script>
+{% endblock %}

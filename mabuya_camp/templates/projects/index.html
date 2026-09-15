@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "projects/_macros.html" import project_card %}
+{% block title %}Projects — Mabuya Camp{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-2">
+    <div>
+        <h1 class="mc-greeting">Projects</h1>
+        <p class="mb-0" style="color: var(--mc-muted);">All active projects</p>
+    </div>
+    {% if current_user.role != 'member' %}
+    <a href="{{ url_for('projects.create') }}" class="btn mc-btn mc-btn-primary">
+        <i class="bi bi-plus-lg"></i> New Project
+    </a>
+    {% endif %}
+</div>
+
+{% if projects %}
+    <div class="project-grid mt-3">
+        {% for project in projects %}
+            {{ project_card(project, colors, can_manage=project.id in manageable_ids) }}
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <h2>No active projects</h2>
+        <p>Create a project to get started.</p>
+        {% if current_user.role != 'member' %}
+        <a href="{{ url_for('projects.create') }}" class="btn mc-btn mc-btn-primary">
+            <i class="bi bi-plus-lg"></i> Create Project
+        </a>
+        {% endif %}
+    </div>
+{% endif %}
+
+<p class="mt-4 mb-0">
+    <a href="{{ url_for('projects.archived') }}">View archived projects →</a>
+</p>
+{% endblock %}

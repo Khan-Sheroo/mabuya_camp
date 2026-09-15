@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Archived Projects — Mabuya Camp{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('home.index') }}" class="back-link"><i class="bi bi-arrow-left"></i> Home</a>
+<h1 class="mc-greeting">Archived projects</h1>
+<p class="mb-3" style="color: var(--mc-muted);">Restored projects return to your active list.</p>
+
+{% if projects %}
+    <div class="project-grid">
+        {% for project in projects %}
+        <div class="project-card" style="--card-color: {{ colors.get(project.color, colors.get('teal')) }}; cursor: default;">
+            <h3><a href="{{ url_for('projects.dashboard', project_id=project.id) }}">{{ project.name }}</a></h3>
+            <div class="desc">{{ project.description or 'No description yet.' }}</div>
+            <div class="project-meta mb-3">
+                <span><i class="bi bi-archive"></i> Archived {{ project.archived_at|relative_time if project.archived_at else '' }}</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <form method="post" action="{{ url_for('projects.restore', project_id=project.id) }}">
+                    <button type="submit" class="btn mc-btn mc-btn-primary btn-sm">Restore</button>
+                </form>
+                <button type="button" class="btn mc-btn mc-btn-ghost btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ project.id }}">Delete</button>
+            </div>
+        </div>
+
+        <div class="modal fade" id="deleteModal{{ project.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Delete "{{ project.name }}"?</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        This permanently deletes the project. This cannot be undone.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                        <form method="post" action="{{ url_for('projects.delete', project_id=project.id) }}">
+                            <button type="submit" class="btn mc-btn mc-btn-danger">Delete Project</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <h2>No archived projects</h2>
+        <p>Archived projects will appear here.</p>
+    </div>
+{% endif %}
+{% endblock %}

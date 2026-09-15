@@ -1,0 +1,50 @@
+<li class="file-row"
+    draggable="true"
+    data-doc-id="{{ doc.id }}"
+    data-filename="{{ doc.original_filename }}"
+    data-label="{{ doc.label or '' }}"
+    data-folder-id="{{ doc.folder_id or '' }}"
+    data-is-image="{{ '1' if doc.is_image() else '0' }}"
+    data-is-pdf="{{ '1' if doc.is_pdf() else '0' }}"
+    data-search="{{ (doc.original_filename ~ ' ' ~ (doc.label or ''))|lower }}"
+    data-sort-name="{{ doc.original_filename|lower }}"
+    data-sort-date="{{ doc.uploaded_at.isoformat() if doc.uploaded_at else '' }}">
+    <div class="file-row-preview">
+        {% if doc.is_image() %}
+        <button type="button" class="file-thumb-btn preview-doc-btn" data-doc-id="{{ doc.id }}" title="Preview">
+            <img class="file-thumb"
+                 src="{{ url_for('projects.download_project_file', project_id=project.id, doc_id=doc.id) }}"
+                 alt="">
+        </button>
+        {% elif doc.is_pdf() %}
+        <button type="button" class="file-type-icon preview-doc-btn" data-doc-id="{{ doc.id }}" title="Preview">
+            <i class="bi bi-file-earmark-pdf"></i>
+        </button>
+        {% else %}
+        <span class="file-type-icon" aria-hidden="true"><i class="bi bi-file-earmark"></i></span>
+        {% endif %}
+    </div>
+    <div class="file-row-main">
+        <button type="button" class="file-row-name preview-doc-btn" data-doc-id="{{ doc.id }}">
+            {{ doc.label or doc.original_filename }}
+        </button>
+        <div class="file-row-sub">
+            {% if doc.label %}<span>{{ doc.original_filename }}</span><span class="file-dot" aria-hidden="true">·</span>{% endif %}
+            <span>{{ doc.uploaded_at.strftime('%b %d, %Y') if doc.uploaded_at else '—' }}</span>
+        </div>
+    </div>
+    <div class="dropdown file-row-menu">
+        <button type="button" class="docs-folder-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="File actions">
+            <i class="bi bi-three-dots"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><button type="button" class="dropdown-item preview-doc-btn" data-doc-id="{{ doc.id }}">Preview</button></li>
+            <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('projects.download_project_file', project_id=project.id, doc_id=doc.id, download=1) }}">Download</a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><button type="button" class="dropdown-item text-danger delete-doc-btn" data-doc-id="{{ doc.id }}">Delete</button></li>
+        </ul>
+    </div>
+</li>

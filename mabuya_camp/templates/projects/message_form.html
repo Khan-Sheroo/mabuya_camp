@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if mode == 'edit' else 'New' }} message — {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="composer-page" id="messageComposer"
+     data-mode="{{ mode }}"
+     data-member-count="{{ member_count }}">
+    <form method="post" id="messageComposerForm"
+          action="{% if mode == 'edit' %}{{ url_for('projects.edit_message', project_id=project.id, message_id=message.id) }}{% else %}{{ url_for('projects.new_message', project_id=project.id) }}{% endif %}">
+        <input type="hidden" name="intent" id="messageIntent" value="post">
+        <input type="hidden" name="body" id="messageBodyHidden" value="">
+
+        <div class="composer-topbar">
+            <div class="composer-crumb">
+                <a href="{{ url_for('projects.dashboard', project_id=project.id) }}">{{ project.name }}</a>
+                <span class="composer-crumb-sep">&lt;</span>
+                <a href="{{ url_for('projects.messages', project_id=project.id) }}">Message Board</a>
+            </div>
+            <div class="composer-top-actions">
+                <button type="button" class="composer-icon-btn" title="Schedule (coming soon)" disabled>
+                    <i class="bi bi-clock"></i>
+                </button>
+                <button type="submit" class="composer-draft-link" data-intent="draft">Save a draft</button>
+                <button type="submit" class="btn composer-post-btn" data-intent="post">Post this message</button>
+            </div>
+        </div>
+
+        <div class="composer-sheet">
+            <div class="composer-category-wrap dropdown">
+                <button type="button" class="composer-category-btn" data-bs-toggle="dropdown" aria-expanded="false" id="composerCategoryBtn">
+                    <span id="composerCategoryLabel">
+                        {% set ns = namespace(label='Pick a category (optional)') %}
+                        {% for cat in categories %}
+                            {% if form.category_id == cat.id|string %}{% set ns.label = cat.name %}{% endif %}
+                        {% endfor %}
+                        {{ ns.label }}
+                    </span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <button type="button" class="dropdown-item composer-cat-option" data-value="" data-label="Pick a category (optional)">No category</button>
+                    </li>
+                    {% for cat in categories %}
+                    <li>
+                        <button type="button" class="dropdown-item composer-cat-option" data-value="{{ cat.id }}" data-label="{{ cat.name }}">{{ cat.name }}</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <input type="hidden" name="category_id" id="messageCategory" value="{{ form.category_id or '' }}">
+            </div>
+
+            <input type="text" class="composer-title" id="messageTitle" name="title"
+                   maxlength="300" required autofocus
+                   value="{{ form.title or '' }}"
+                   placeholder="Type a title...">
+
+            <div class="composer-toolbar" role="toolbar" aria-label="Formatting">
+                <button type="button" class="composer-tool" data-cmd="insertImage" title="Image"><i class="bi bi-image"></i></button>
+                <button type="button" class="composer-tool" data-cmd="attach" title="Attach"><i class="bi bi-paperclip"></i></button>
+                <span class="composer-tool-sep"></span>
+                <button type="button" class="composer-tool" data-cmd="bold" title="Bold"><strong>B</strong></button>
+                <button type="button" class="composer-tool" data-cmd="italic" title="Italic"><em>I</em></button>
+                <button type="button" class="composer-tool" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+                <button type="button" class="composer-tool" data-cmd="formatBlock" data-value="h3" title="Heading">Tt</button>
+                <button type="button" class="composer-tool" data-cmd="foreColor" data-value="#5b9cf5" title="Color"><i class="bi bi-droplet-half"></i></button>
+                <button type="button" class="composer-tool" data-cmd="createLink" title="Link"><i class="bi bi-link-45deg"></i></button>
+                <button type="button" class="composer-tool" data-cmd="formatBlock" data-value="blockquote" title="Quote"><i class="bi bi-quote"></i></button>
+                <button type="button" class="composer-tool" data-cmd="formatBlock" data-value="pre" title="Code">&lt;&gt;</button>
+                <button type="button" class="composer-tool" data-cmd="insertUnorderedList" title="Bulleted list"><i class="bi bi-list-ul"></i></button>
+                <button type="button" class="composer-tool" data-cmd="insertOrderedList" title="Numbered list"><i class="bi bi-list-ol"></i></button>
+                <button type="button" class="composer-tool" data-cmd="insertHorizontalRule" title="Divider"><i class="bi bi-dash-lg"></i></button>
+                <span class="composer-tool-spacer"></span>
+                <button type="button" class="composer-tool" data-cmd="undo" title="Undo"><i class="bi bi-arrow-counterclockwise"></i></button>
+                <button type="button" class="composer-tool" data-cmd="redo" title="Redo"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+
+            <div class="composer-body"
+                 id="messageBodyEditor"
+                 contenteditable="true"
+                 data-placeholder="Write away..."
+                 role="textbox"
+                 aria-multiline="true">{{ form.body|safe if form.body else '' }}</div>
+
+            <div class="composer-notify-card">
+                <h2 class="composer-notify-heading">When I post this, notify…</h2>
+
+                <label class="composer-notify-option">
+                    <input type="radio" name="notify_mode" value="subscribers"
+                           {% if (form.notify_mode or 'subscribers') == 'subscribers' %}checked{% endif %}>
+                    <span class="composer-notify-copy">
+                        <span class="composer-notify-label">
+                            Only the {{ member_count }} {{ 'person' if member_count == 1 else 'people' }} on this project
+                        </span>
+                        {% if members %}
+                        <span class="composer-notify-avatars">
+                            {% for user in members[:8] %}
+                            <span class="composer-avatar" style="--i: {{ loop.index0 }}" title="{{ user.name }}">{{ user.initials }}</span>
+                            {% endfor %}
+                            {% if members|length > 8 %}
+                            <span class="composer-avatar-more">+{{ members|length - 8 }}</span>
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                    </span>
+                </label>
+
+                <label class="composer-notify-option">
+                    <input type="radio" name="notify_mode" value="select"
+                           {% if form.notify_mode == 'select' %}checked{% endif %}>
+                    <span class="composer-notify-copy">
+                        <span class="composer-notify-label">Everyone I select…</span>
+                        <span class="composer-select-people {% if form.notify_mode != 'select' %}d-none{% endif %}" id="composerSelectPeople">
+                            {% set selected = form.notify_user_ids or [] %}
+                            {% for user in members %}
+                            <label class="composer-person-check">
+                                <input type="checkbox" name="notify_user_ids" value="{{ user.id }}"
+                                       {% if user.id|string in selected %}checked{% endif %}>
+                                <span class="composer-avatar" style="--i: {{ loop.index0 }}">{{ user.initials }}</span>
+                                <span>{{ user.name }}</span>
+                            </label>
+                            {% else %}
+                            <span class="composer-notify-hint">No project people yet.</span>
+                            {% endfor %}
+                        </span>
+                    </span>
+                </label>
+
+                <label class="composer-notify-option">
+                    <input type="radio" name="notify_mode" value="none"
+                           {% if form.notify_mode == 'none' %}checked{% endif %}>
+                    <span class="composer-notify-copy">
+                        <span class="composer-notify-label">No one</span>
+                    </span>
+                </label>
+
+                <div class="composer-notify-actions">
+                    <button type="submit" class="btn composer-post-btn" data-intent="post">Post this message</button>
+                    <button type="submit" class="btn composer-draft-btn" data-intent="draft">Save a draft</button>
+                    <button type="button" class="composer-icon-btn" title="Schedule (coming soon)" disabled>
+                        <i class="bi bi-clock"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/message-composer.js') }}"></script>
+{% endblock %}

@@ -1,31 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="night">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Mabuya Camp{% endblock %}</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('mabuya-camp-theme');
+          document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'night') ? t : 'night');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'night');
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('staff.list_staff') }}">Mabuya Camp</a>
-            <div class="collapse navbar-collapse show">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('staff.list_staff') }}">Staff Files</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('staff.add_staff') }}">Add Staff</a>
-                    </li>
-                </ul>
+    {% if current_user.is_authenticated %}
+    <nav class="mc-nav">
+        <div class="mc-nav-inner">
+            <div class="mc-nav-side mc-nav-side-start">
+                {% block nav_left %}{% endblock %}
+            </div>
+            <a class="mc-brand" href="{{ url_for('home.index') }}">Mabuya Camp</a>
+            <div class="mc-nav-side mc-nav-side-end">
+                <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch theme">
+                    <i class="bi bi-moon-stars icon-moon" aria-hidden="true"></i>
+                    <i class="bi bi-sun icon-sun" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ current_user.name }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item disabled" href="#">My Profile</a></li>
+                        <li><a class="dropdown-item disabled" href="#">Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{{ url_for('auth.logout') }}">
+                                <button type="submit" class="dropdown-item">Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
+    {% else %}
+    <button type="button" class="theme-toggle theme-toggle-floating" data-theme-toggle aria-label="Switch theme">
+        <i class="bi bi-moon-stars icon-moon" aria-hidden="true"></i>
+        <i class="bi bi-sun icon-sun" aria-hidden="true"></i>
+    </button>
+    {% endif %}
 
-    <div class="container mt-4">
+    <div class="{% block shell_class %}mc-main{% endblock %}">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -40,6 +75,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/project-colors.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

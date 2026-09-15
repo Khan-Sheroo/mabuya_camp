@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ project.name }} — Mabuya Camp{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> Back to project</a>
+<div class="mc-panel" style="max-width: 640px;">
+    <h1 class="mc-greeting mb-3" style="font-size: 1.75rem;">Edit Project</h1>
+    <form method="post" action="{{ url_for('projects.edit', project_id=project.id) }}">
+        <div class="mb-3">
+            <label class="form-label mc-form-label" for="name">Project name *</label>
+            <input type="text" class="form-control mc-form-control" id="name" name="name" required maxlength="200" value="{{ project.name }}" autofocus>
+        </div>
+        <div class="mb-3">
+            <label class="form-label mc-form-label" for="description">Description</label>
+            <textarea class="form-control mc-form-control" id="description" name="description" rows="3">{{ project.description or '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label mc-form-label d-block">Project colour</label>
+            <div class="color-options">
+                {% for key, hex in colors.items() %}
+                <label class="color-option" title="{{ key|capitalize }}">
+                    <input type="radio" name="color" value="{{ key }}" {% if project.color == key %}checked{% endif %}>
+                    <span class="color-swatch" style="background: {{ hex }};"></span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label mc-form-label" for="start_date">Start date</label>
+                <input type="date" class="form-control mc-form-control" id="start_date" name="start_date" value="{{ project.start_date.isoformat() if project.start_date else '' }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label mc-form-label" for="end_date">End date</label>
+                <input type="date" class="form-control mc-form-control" id="end_date" name="end_date" value="{{ project.end_date.isoformat() if project.end_date else '' }}">
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 justify-content-between">
+            <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="btn mc-btn mc-btn-ghost">Cancel</a>
+            <button type="submit" class="btn mc-btn mc-btn-primary">Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

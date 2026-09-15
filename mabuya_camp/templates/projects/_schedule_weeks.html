@@ -1,0 +1,60 @@
+{% for week in weeks %}
+<div class="schedule-week" data-week-start="{{ week[0].iso }}">
+    {% for day in week %}
+    <div class="schedule-day{% if day.is_today %} is-today{% endif %}{% if day.is_month_start and not day.is_today %} is-month-start{% endif %}"
+         data-date="{{ day.iso }}">
+        <div class="schedule-day-head">
+            {% if day.label %}
+            <span class="schedule-day-label">{{ day.label }}</span>
+            {% else %}
+            <span class="schedule-day-num">{{ day.day }}</span>
+            {% endif %}
+        </div>
+        <div class="schedule-day-items">
+            {% for item in day.day_items %}
+            <article class="schedule-item{% if item.completed %} is-completed{% endif %}"
+                     data-kind="{{ item.kind }}"
+                     data-id="{{ item.id }}"
+                     data-search="{{ (item.title ~ ' ' ~ item.subtitle)|lower }}"
+                     data-title="{{ item.title }}"
+                     data-subtitle="{{ item.subtitle }}"
+                     data-notes="{{ item.notes }}"
+                     data-date="{{ item.event_date }}"
+                     data-todo-id="{{ item.todo_id if item.kind == 'todo' else '' }}">
+                {% if item.kind == 'event' %}
+                <button type="button" class="schedule-item-check" data-toggle-event="{{ item.id }}" aria-label="Toggle complete">
+                    <i class="bi {{ 'bi-check-square' if item.completed else 'bi-square' }}"></i>
+                </button>
+                {% else %}
+                <span class="schedule-item-check is-static" aria-hidden="true">
+                    <i class="bi {{ 'bi-check-square' if item.completed else 'bi-square' }}"></i>
+                </span>
+                {% endif %}
+                <div class="schedule-item-body">
+                    <div class="schedule-item-title-row">
+                        <button type="button" class="schedule-item-title" data-open-item>{{ item.title }}</button>
+                        {% if item.has_notes %}
+                        <span class="schedule-info-dot" title="Has notes"><i class="bi bi-info-circle-fill"></i></span>
+                        {% endif %}
+                    </div>
+                    {% if item.subtitle %}
+                    <div class="schedule-item-sub">{{ item.subtitle }}</div>
+                    {% endif %}
+                    {% if item.assignees %}
+                    <div class="schedule-item-avatars">
+                        {% for person in item.assignees %}
+                        <span class="schedule-avatar" style="--i: {{ loop.index0 }}" title="{{ person.name }}">{{ person.initials }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        <button type="button" class="schedule-day-add" data-new-on="{{ day.iso }}" title="Add event" aria-label="Add event on {{ day.iso }}">
+            <i class="bi bi-plus"></i>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
