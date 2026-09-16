@@ -46,15 +46,17 @@
 {% macro project_header(project, colors, can_manage=false) %}
 <div class="project-header">
     <div class="project-title-block">
-        {% if project.member_users %}
-        <div class="people-ribbon" aria-label="People on this project">
-            {% for user in project.member_users %}
-            <span class="people-ribbon-avatar" title="{{ user.name }}" style="--i: {{ loop.index0 }};">
-                {{ user.initials }}
-            </span>
-            {% endfor %}
-        </div>
-        {% endif %}
+        <a class="people-ribbon" href="{{ url_for('projects.people', project_id=project.id) }}" aria-label="People on this project">
+            {% if project.member_users %}
+                {% for user in project.member_users %}
+                <span class="people-ribbon-avatar" title="{{ user.name }}" style="--i: {{ loop.index0 }};">
+                    {{ user.initials }}
+                </span>
+                {% endfor %}
+            {% else %}
+                <span class="people-ribbon-empty"><i class="bi bi-people"></i> People</span>
+            {% endif %}
+        </a>
         <h1>
             <span class="color-dot" style="background: {{ project_color(project, colors) }};"></span>
             {{ project.name }}

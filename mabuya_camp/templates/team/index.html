@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Team — Mabuya Camp{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('home.index') }}" class="back-link"><i class="bi bi-arrow-left"></i> Home</a>
+
+<div class="team-page">
+    <div class="team-page-head">
+        <div>
+            <h1 class="team-heading">Team</h1>
+            <p class="team-lede">People who can sign in and collaborate on projects. As team leader, you add them here first, then put them on each project.</p>
+        </div>
+        <button type="button" class="btn team-add-btn" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+            <i class="bi bi-person-plus"></i> Add person
+        </button>
+    </div>
+
+    <ul class="team-list">
+        {% for user in users %}
+        <li class="team-row">
+            <span class="team-avatar" style="--i: {{ loop.index0 }}">{{ user.initials }}</span>
+            <div class="team-meta">
+                <div class="team-name">
+                    {{ user.name }}
+                    {% if user.id == current_user.id %}
+                    <span class="team-you">you</span>
+                    {% endif %}
+                </div>
+                <div class="team-email">{{ user.email }}</div>
+            </div>
+            <div class="team-role-wrap">
+                {% if user.id == current_user.id %}
+                <span class="team-role-badge">{{ role_label(user.role) }}</span>
+                {% else %}
+                <form method="post" action="{{ url_for('team.update_role', user_id=user.id) }}" class="team-role-form">
+                    <label class="visually-hidden" for="role-{{ user.id }}">Role</label>
+                    <select class="team-role-select" id="role-{{ user.id }}" name="role" onchange="this.form.submit()">
+                        <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Team leader</option>
+                        <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>Manager</option>
+                        <option value="member" {% if user.role == 'member' %}selected{% endif %}>Member</option>
+                    </select>
+                </form>
+                {% endif %}
+            </div>
+            <div class="dropdown team-actions">
+                <button type="button" class="team-dots" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-label="Actions for {{ user.name }}">
+                    <i class="bi bi-three-dots"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#passwordModal{{ user.id }}">
+                            Set password
+                        </button>
+                    </li>
+                    {% if user.id != current_user.id %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{{ url_for('team.remove', user_id=user.id) }}" onsubmit="return confirm('Remove {{ user.name }} from the team? They will lose access to all projects.');">
+                            <button type="submit" class="dropdown-item text-danger">Remove from team</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </li>
+        {% else %}
+        <li class="team-empty">No people on the team yet.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% for user in users %}
+<div class="modal fade" id="passwordModal{{ user.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('team.reset_password', user_id=user.id) }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Set password for {{ user.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="password-{{ user.id }}">New password</label>
+                <input type="text" class="form-control" id="password-{{ user.id }}" name="password" minlength="6" required autocomplete="new-password">
+                <div class="form-text">Share this with them so they can sign in. Minimum 6 characters.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn mc-btn mc-btn-primary">Save password</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<div class="modal fade" id="addMemberModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('team.add') }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add a person</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body team-add-form">
+                <div class="mb-3">
+                    <label class="form-label" for="add-name">Name</label>
+                    <input type="text" class="form-control" id="add-name" name="name" required maxlength="120" autocomplete="name">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="add-email">Email</label>
+                    <input type="email" class="form-control" id="add-email" name="email" required autocomplete="email">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="add-password">Temporary password</label>
+                    <input type="text" class="form-control" id="add-password" name="password" minlength="6" required autocomplete="new-password">
+                    <div class="form-text">They will use this to sign in. You can change it later.</div>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label" for="add-role">Role</label>
+                    <select class="form-select" id="add-role" name="role">
+                        <option value="member" selected>Member — works on projects they are added to</option>
+                        <option value="manager">Manager — can create projects and manage ones they are on</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn mc-btn mc-btn-primary">Add to team</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

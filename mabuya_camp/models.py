@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='member')  # admin | manager | member
     avatar = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     last_login = db.Column(db.DateTime, nullable=True)
@@ -89,7 +90,7 @@ class Project(db.Model):
 
     @property
     def member_users(self):
-        return [m.user for m in self.members if m.user]
+        return [m.user for m in self.members if m.user and m.user.is_active]
 
     def __repr__(self):
         return f'<Project {self.name}>'

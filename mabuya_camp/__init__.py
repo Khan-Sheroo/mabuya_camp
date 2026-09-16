@@ -37,10 +37,12 @@ def create_app(config_object='config.Config'):
 
     from mabuya_camp.auth import auth_bp
     from mabuya_camp.projects import projects_bp, home_bp
+    from mabuya_camp.team import team_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(home_bp)
     app.register_blueprint(projects_bp)
+    app.register_blueprint(team_bp)
 
     @app.template_filter('relative_time')
     def relative_time_filter(dt):
@@ -100,6 +102,14 @@ def _ensure_schema():
         for stmt in alterations:
             db.session.execute(text(stmt))
         if alterations:
+            db.session.commit()
+
+    if 'users' in tables:
+        cols = {c['name'] for c in inspector.get_columns('users')}
+        if 'is_active' not in cols:
+            db.session.execute(
+                text('ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1')
+            )
             db.session.commit()
 
     if 'project_messages' in tables:

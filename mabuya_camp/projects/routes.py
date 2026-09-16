@@ -1,5 +1,6 @@
 import re
-from datetime import datetime, date
+import calendar
+from datetime import datetime, date, timedelta
 from flask import (
     render_template, redirect, url_for, flash, request, abort, jsonify,
     current_app, send_from_directory,
@@ -7,7 +8,10 @@ from flask import (
 from flask_login import login_required, current_user
 from mabuya_camp import db
 from mabuya_camp.projects import projects_bp, home_bp
-from mabuya_camp.models import Project, ProjectMember, Todo, TodoChecklistItem, TodoChecklistImage, User
+from mabuya_camp.models import (
+    Project, ProjectMember, Todo, TodoChecklistItem, TodoChecklistImage, User,
+    ProjectMessage, ProjectFolder, ProjectDocument, ProjectEvent,
+)
 from config import PROJECT_COLORS, DEFAULT_PROJECT_COLOR
 from pathlib import Path
 from uuid import uuid4
@@ -212,6 +216,168 @@ def create():
 
 # ── Dashboard ─────────────────────────────────────────────────────────
 
+def _plain_text_excerpt(html: str, limit: int = 72) -> str:
+    text = re.sub(r'<[^>]+>', ' ', html or '')
+    text = re.sub(r'\s+', ' ', text).strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + '…'
+
+
+def _dashboard_previews(project):
+    """Gather compact live previews for each project module tile."""
+    today = date.today()
+
+    # Messages — recent published posts
+    recent_messages = (
+        ProjectMessage.query
+        .filter_by(project_id=project.id, is_draft=False)
+        .order_by(ProjectMessage.created_at.desc(), ProjectMessage.id.desc())
+        .limit(4)
+        .all()
+    )
+    message_previews = [
+        {
+            'title': msg.title,
+            'excerpt': _plain_text_excerpt(msg.body),
+            'initials': msg.creator.initials if msg.creator else '?',
+            'author': msg.creator.name if msg.creator else '',
+        }
+        for msg in recent_messages
+    ]
+
+    # To-dos — open lists with a few open checklist items each
+    open_lists = (
+        Todo.query
+        .filter_by(project_id=project.id, completed=False)
+        .order_by(Todo.position.asc(), Todo.created_at.desc())
+        .all()
+    )
+    todo_previews = []
+    rows_budget = 10
+    for todo in open_lists:
+        if rows_budget <= 0:
+            break
+        open_items = [
+            item for item in todo.active_checklist_items if not item.completed
+        ][: max(1, min(4, rows_budget - 1))]
+        todo_previews.append({
+            'title': todo.title,
+            'tasks': [{'text': item.text, 'completed': item.completed} for item in open_items],
+        })
+        rows_budget -= 1 + len(open_items)
+
+    # Docs & files — folders with item counts
+    folders = (
+        ProjectFolder.query
+        .filter_by(project_id=project.id)
+        .order_by(ProjectFolder.name.asc())
+        .limit(6)
+        .all()
+    )
+    folder_previews = []
+    for folder in folders:
+        count = ProjectDocument.query.filter_by(
+            project_id=project.id, folder_id=folder.id
+        ).count()
+        folder_previews.append({'name': folder.name, 'count': count})
+    unfiled_count = ProjectDocument.query.filter_by(
+        project_id=project.id, folder_id=None
+    ).count()
+    if not folder_previews and unfiled_count:
+        folder_previews.append({'name': 'Unfiled', 'count': unfiled_count})
+
+    # Schedule — mini month + upcoming events / due items
+    month_start = today.replace(day=1)
+    if today.month == 12:
+        month_end = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        month_end = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+
+    month_events = (
+        ProjectEvent.query
+        .filter(
+            ProjectEvent.project_id == project.id,
+            ProjectEvent.event_date >= month_start,
+            ProjectEvent.event_date <= month_end,
+        )
+        .all()
+    )
+    month_dues = (
+        TodoChecklistItem.query
+        .join(Todo)
+        .filter(
+            Todo.project_id == project.id,
+            TodoChecklistItem.archived.is_(False),
+            TodoChecklistItem.due_date.isnot(None),
+            TodoChecklistItem.due_date >= month_start,
+            TodoChecklistItem.due_date <= month_end,
+        )
+        .all()
+    )
+    marked_days = {e.event_date.day for e in month_events} | {
+        d.due_date.day for d in month_dues if d.due_date
+    }
+
+    upcoming_events = (
+        ProjectEvent.query
+        .filter(
+            ProjectEvent.project_id == project.id,
+            ProjectEvent.event_date >= today,
+        )
+        .order_by(ProjectEvent.event_date.asc(), ProjectEvent.id.asc())
+        .limit(4)
+        .all()
+    )
+    upcoming_dues = (
+        TodoChecklistItem.query
+        .join(Todo)
+        .filter(
+            Todo.project_id == project.id,
+            TodoChecklistItem.archived.is_(False),
+            TodoChecklistItem.completed.is_(False),
+            TodoChecklistItem.due_date.isnot(None),
+            TodoChecklistItem.due_date >= today,
+        )
+        .order_by(TodoChecklistItem.due_date.asc(), TodoChecklistItem.id.asc())
+        .limit(4)
+        .all()
+    )
+    upcoming = []
+    for ev in upcoming_events:
+        upcoming.append({
+            'title': ev.title,
+            'date': ev.event_date,
+            'completed': ev.completed,
+            'kind': 'event',
+        })
+    for item in upcoming_dues:
+        upcoming.append({
+            'title': item.text,
+            'date': item.due_date,
+            'completed': item.completed,
+            'kind': 'todo',
+        })
+    upcoming.sort(key=lambda x: (x['date'], 0 if x['kind'] == 'event' else 1))
+    upcoming = upcoming[:4]
+
+    cal = calendar.Calendar(firstweekday=calendar.SUNDAY)
+    return {
+        'messages': message_previews,
+        'todos': todo_previews,
+        'folders': folder_previews,
+        'schedule': {
+            'year': today.year,
+            'month': today.month,
+            'month_name': calendar.month_name[today.month],
+            'today': today.day,
+            'weeks': cal.monthdayscalendar(today.year, today.month),
+            'marked_days': marked_days,
+            'upcoming': upcoming,
+        },
+    }
+
+
 @projects_bp.route('/<int:project_id>')
 @login_required
 def dashboard(project_id):
@@ -222,6 +388,7 @@ def dashboard(project_id):
         colors=PROJECT_COLORS,
         can_manage=_can_manage_project(project),
         active_tab='overview',
+        previews=_dashboard_previews(project),
     )
 
 
@@ -663,18 +830,114 @@ def delete_checklist_item(project_id, todo_id, item_id):
     return redirect(url_for('projects.todos', project_id=project.id, _anchor=f'todo-{todo.id}'))
 
 
-# ── Module placeholders ───────────────────────────────────────────────
+# ── People ─────────────────────────────────────────────────────────────
+
+def _project_memberships(project):
+    return (
+        ProjectMember.query
+        .filter_by(project_id=project.id)
+        .join(User, User.id == ProjectMember.user_id)
+        .order_by(ProjectMember.role.asc(), User.name.asc())
+        .all()
+    )
+
+
+def _available_team_users(project):
+    member_ids = {m.user_id for m in project.members}
+    q = User.query.filter_by(is_active=True).order_by(User.name.asc())
+    if member_ids:
+        q = q.filter(~User.id.in_(member_ids))
+    return q.all()
+
 
 @projects_bp.route('/<int:project_id>/people')
 @login_required
 def people(project_id):
     project = _get_accessible_project(project_id)
+    can_manage = _can_manage_project(project)
+    memberships = _project_memberships(project)
     return render_template(
-        'projects/placeholder.html',
+        'projects/people.html',
         project=project,
         colors=PROJECT_COLORS,
-        can_manage=_can_manage_project(project),
+        can_manage=can_manage,
         active_tab='people',
-        module_name='People',
-        module_blurb='Project members and roles will be managed here.',
+        memberships=memberships,
+        available_users=_available_team_users(project) if can_manage else [],
     )
+
+
+@projects_bp.route('/<int:project_id>/people/add', methods=['POST'])
+@login_required
+def add_project_person(project_id):
+    project = _get_accessible_project(project_id)
+    if not _can_manage_project(project):
+        flash('You do not have permission to add people to this project.', 'error')
+        return redirect(url_for('projects.people', project_id=project.id))
+
+    try:
+        user_id = int(request.form.get('user_id') or 0)
+    except (TypeError, ValueError):
+        user_id = 0
+    user = User.query.get(user_id)
+    if not user:
+        flash('Choose someone from the team.', 'error')
+        return redirect(url_for('projects.people', project_id=project.id))
+
+    existing = ProjectMember.query.filter_by(
+        project_id=project.id, user_id=user.id
+    ).first()
+    if existing:
+        flash(f'{user.name} is already on this project.', 'error')
+        return redirect(url_for('projects.people', project_id=project.id))
+
+    db.session.add(ProjectMember(
+        project_id=project.id,
+        user_id=user.id,
+        role='member',
+    ))
+    _touch_project(project)
+    db.session.commit()
+    flash(f'{user.name} was added to the project.', 'success')
+    return redirect(url_for('projects.people', project_id=project.id))
+
+
+@projects_bp.route('/<int:project_id>/people/<int:user_id>/remove', methods=['POST'])
+@login_required
+def remove_project_person(project_id, user_id):
+    project = _get_accessible_project(project_id)
+    if not _can_manage_project(project):
+        flash('You do not have permission to remove people from this project.', 'error')
+        return redirect(url_for('projects.people', project_id=project.id))
+
+    membership = ProjectMember.query.filter_by(
+        project_id=project.id, user_id=user_id
+    ).first_or_404()
+    user = membership.user
+
+    if ProjectMember.query.filter_by(project_id=project.id).count() <= 1:
+        flash('A project needs at least one person.', 'error')
+        return redirect(url_for('projects.people', project_id=project.id))
+
+    if membership.role == 'owner':
+        next_member = (
+            ProjectMember.query
+            .filter(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id != user_id,
+            )
+            .order_by(ProjectMember.created_at.asc())
+            .first()
+        )
+        if next_member and not ProjectMember.query.filter(
+            ProjectMember.project_id == project.id,
+            ProjectMember.role == 'owner',
+            ProjectMember.user_id != user_id,
+        ).first():
+            next_member.role = 'owner'
+
+    db.session.delete(membership)
+    _touch_project(project)
+    db.session.commit()
+    flash(f'{user.name if user else "Person"} was removed from the project.', 'success')
+    return redirect(url_for('projects.people', project_id=project.id))

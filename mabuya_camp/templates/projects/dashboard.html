@@ -10,25 +10,152 @@
         {{ project_header(project, colors, can_manage) }}
 
         <div class="module-grid">
-            <a class="module-tile" href="{{ url_for('projects.messages', project_id=project.id) }}">
-                <span class="module-icon"><i class="bi bi-chat-square-text"></i></span>
-                <h2>Message board</h2>
-                <p>Discussions and announcements</p>
+            {# ── Message board ── #}
+            <a class="module-tile module-tile--preview" href="{{ url_for('projects.messages', project_id=project.id) }}">
+                <h2 class="module-tile-label">Message Board</h2>
+                <div class="module-preview">
+                    {% if previews.messages %}
+                        {% for msg in previews.messages %}
+                        <div class="mp-message">
+                            <span class="mp-avatar" style="--i: {{ loop.index0 }}">{{ msg.initials }}</span>
+                            <div class="mp-message-body">
+                                <div class="mp-message-title">{{ msg.title }}</div>
+                                {% if msg.excerpt %}
+                                <div class="mp-message-excerpt">{{ msg.excerpt }}</div>
+                                {% else %}
+                                <div class="mp-skel-lines" aria-hidden="true">
+                                    <span></span><span></span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="mp-empty">
+                            <div class="mp-message mp-message--ghost">
+                                <span class="mp-avatar mp-avatar--ghost"></span>
+                                <div class="mp-skel-lines" aria-hidden="true"><span></span><span></span></div>
+                            </div>
+                            <div class="mp-message mp-message--ghost">
+                                <span class="mp-avatar mp-avatar--ghost"></span>
+                                <div class="mp-skel-lines" aria-hidden="true"><span></span><span class="short"></span></div>
+                            </div>
+                            <p class="mp-empty-hint">No messages yet</p>
+                        </div>
+                    {% endif %}
+                </div>
             </a>
-            <a class="module-tile" href="{{ url_for('projects.todos', project_id=project.id) }}">
-                <span class="module-icon"><i class="bi bi-check2-square"></i></span>
-                <h2>To-dos</h2>
-                <p>Tasks and checklists</p>
+
+            {# ── To-dos ── #}
+            <a class="module-tile module-tile--preview" href="{{ url_for('projects.todos', project_id=project.id) }}">
+                <h2 class="module-tile-label">To-dos</h2>
+                <div class="module-preview">
+                    {% if previews.todos %}
+                        {% for todo_list in previews.todos %}
+                        <div class="mp-todo-group">
+                            <div class="mp-todo-heading">
+                                <span class="mp-todo-dot" aria-hidden="true"></span>
+                                <span class="mp-todo-list-title">{{ todo_list.title }}</span>
+                            </div>
+                            {% if todo_list.tasks %}
+                            <ul class="mp-todo-items">
+                                {% for task in todo_list.tasks %}
+                                <li class="mp-todo-item{% if task.completed %} is-done{% endif %}">
+                                    <span class="mp-check" aria-hidden="true"></span>
+                                    <span class="mp-todo-text">{{ task.text }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="mp-empty">
+                            <div class="mp-todo-group mp-todo-group--ghost">
+                                <div class="mp-todo-heading">
+                                    <span class="mp-todo-dot" aria-hidden="true"></span>
+                                    <span class="mp-skel-inline"></span>
+                                </div>
+                                <ul class="mp-todo-items">
+                                    <li class="mp-todo-item"><span class="mp-check"></span><span class="mp-skel-inline"></span></li>
+                                    <li class="mp-todo-item"><span class="mp-check"></span><span class="mp-skel-inline short"></span></li>
+                                </ul>
+                            </div>
+                            <p class="mp-empty-hint">No open to-dos</p>
+                        </div>
+                    {% endif %}
+                </div>
             </a>
-            <a class="module-tile" href="{{ url_for('projects.files', project_id=project.id) }}">
-                <span class="module-icon"><i class="bi bi-folder2-open"></i></span>
-                <h2>Docs &amp; files</h2>
-                <p>Documents and uploads</p>
+
+            {# ── Docs & files ── #}
+            <a class="module-tile module-tile--preview" href="{{ url_for('projects.files', project_id=project.id) }}">
+                <h2 class="module-tile-label">Docs &amp; Files</h2>
+                <div class="module-preview">
+                    {% if previews.folders %}
+                        {% for folder in previews.folders %}
+                        <div class="mp-folder">
+                            <i class="bi bi-folder-fill mp-folder-icon" aria-hidden="true"></i>
+                            <div class="mp-folder-meta">
+                                <div class="mp-folder-name">{{ folder.name }}</div>
+                                <div class="mp-folder-count">{{ folder.count }} item{% if folder.count != 1 %}s{% endif %}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="mp-empty">
+                            <div class="mp-folder mp-folder--ghost">
+                                <i class="bi bi-folder-fill mp-folder-icon" aria-hidden="true"></i>
+                                <div class="mp-folder-meta">
+                                    <span class="mp-skel-inline"></span>
+                                    <span class="mp-skel-inline short"></span>
+                                </div>
+                            </div>
+                            <div class="mp-folder mp-folder--ghost">
+                                <i class="bi bi-folder-fill mp-folder-icon" aria-hidden="true"></i>
+                                <div class="mp-folder-meta">
+                                    <span class="mp-skel-inline"></span>
+                                    <span class="mp-skel-inline short"></span>
+                                </div>
+                            </div>
+                            <p class="mp-empty-hint">No folders yet</p>
+                        </div>
+                    {% endif %}
+                </div>
             </a>
-            <a class="module-tile" href="{{ url_for('projects.schedule', project_id=project.id) }}">
-                <span class="module-icon"><i class="bi bi-calendar3"></i></span>
-                <h2>Calendar schedule</h2>
-                <p>Events and deadlines</p>
+
+            {# ── Schedule ── #}
+            <a class="module-tile module-tile--preview module-tile--schedule" href="{{ url_for('projects.schedule', project_id=project.id) }}">
+                <h2 class="module-tile-label">Schedule</h2>
+                <div class="module-preview">
+                    <div class="mp-cal">
+                        <div class="mp-cal-month">{{ previews.schedule.month_name }} {{ previews.schedule.year }}</div>
+                        <div class="mp-cal-grid">
+                            {% for wd in ['S','M','T','W','T','F','S'] %}
+                            <span class="mp-cal-wd">{{ wd }}</span>
+                            {% endfor %}
+                            {% for week in previews.schedule.weeks %}
+                                {% for day in week %}
+                                <span class="mp-cal-day{% if day == 0 %} is-empty{% endif %}{% if day == previews.schedule.today %} is-today{% endif %}{% if day in previews.schedule.marked_days %} has-event{% endif %}">
+                                    {% if day %}{{ day }}{% endif %}
+                                </span>
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% if previews.schedule.upcoming %}
+                    <ul class="mp-upcoming">
+                        {% for item in previews.schedule.upcoming %}
+                        <li class="mp-upcoming-item{% if item.completed %} is-done{% endif %}">
+                            <span class="mp-date-badge">{{ item.date.strftime('%b %d') }}</span>
+                            <span class="mp-check" aria-hidden="true"></span>
+                            <span class="mp-upcoming-title">{{ item.title }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="mp-empty-hint mp-empty-hint--inline">Nothing upcoming</p>
+                    {% endif %}
+                </div>
             </a>
         </div>
     </div>

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}People — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+
+<div class="project-shell-wrap">
+    <div class="project-shell people-shell">
+        <div class="shell-ribbon">
+            <a href="{{ url_for('projects.dashboard', project_id=project.id) }}" class="shell-ribbon-title" title="{{ project.name }}">
+                {{ project.name }}
+            </a>
+            <div class="shell-ribbon-actions">
+                <div class="dropdown">
+                    <button type="button" class="shell-ribbon-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Project actions">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects.dashboard', project_id=project.id) }}">Back to project</a>
+                        </li>
+                        {% if current_user.is_admin %}
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('team.index') }}">Manage team</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="people-page-head">
+            <h1 class="people-heading">People</h1>
+            <p class="people-lede">Everyone with access to this project. They can see messages, to-dos, files, and the schedule.</p>
+            {% if can_manage %}
+            <button type="button" class="btn people-add-btn" data-bs-toggle="modal" data-bs-target="#addPersonModal"{% if not available_users %} disabled title="Add people to the team first"{% endif %}>
+                <i class="bi bi-person-plus"></i> Add person
+            </button>
+            {% endif %}
+        </div>
+
+        <ul class="people-list">
+            {% for membership in memberships %}
+            {% set user = membership.user %}
+            {% if user %}
+            <li class="people-row">
+                <span class="people-avatar" style="--i: {{ loop.index0 }}">{{ user.initials }}</span>
+                <div class="people-meta">
+                    <div class="people-name">
+                        {{ user.name }}
+                        {% if user.id == current_user.id %}<span class="people-you">you</span>{% endif %}
+                    </div>
+                    <div class="people-email">{{ user.email }}</div>
+                </div>
+                <span class="people-role">
+                    {% if membership.role == 'owner' %}Owner
+                    {% elif user.role == 'admin' %}Team leader
+                    {% elif user.role == 'manager' %}Manager
+                    {% else %}Member{% endif %}
+                </span>
+                {% if can_manage and memberships|length > 1 %}
+                <form method="post" action="{{ url_for('projects.remove_project_person', project_id=project.id, user_id=user.id) }}" onsubmit="return confirm('Remove {{ user.name }} from this project?');">
+                    <button type="submit" class="people-remove" aria-label="Remove {{ user.name }}">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </li>
+            {% endif %}
+            {% else %}
+            <li class="people-empty">No one is on this project yet.</li>
+            {% endfor %}
+        </ul>
+
+        {% if can_manage and not available_users and current_user.is_admin %}
+        <p class="people-hint">
+            Everyone on the team is already on this project.
+            <a href="{{ url_for('team.index') }}">Add someone new to the team →</a>
+        </p>
+        {% elif can_manage and not available_users and not current_user.is_admin %}
+        <p class="people-hint">
+            Ask your team leader to add more people under Team, then you can put them on this project.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+{% if can_manage %}
+<div class="modal fade" id="addPersonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('projects.add_project_person', project_id=project.id) }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add person to project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if available_users %}
+                <label class="form-label" for="person-user">Team member</label>
+                <select class="form-select" id="person-user" name="user_id" required>
+                    <option value="" disabled selected>Choose someone…</option>
+                    {% for user in available_users %}
+                    <option value="{{ user.id }}">{{ user.name }} — {{ user.email }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <p class="mb-0">No more team members are available to add.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn mc-btn mc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn mc-btn mc-btn-primary" {% if not available_users %}disabled{% endif %}>Add to project</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

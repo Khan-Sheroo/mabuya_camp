@@ -12,6 +12,12 @@
             <span>New project</span>
         </a>
         {% endif %}
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('team.index') }}" class="home-team-link">
+            <i class="bi bi-people"></i>
+            <span>Team</span>
+        </a>
+        {% endif %}
     </aside>
 
     <section class="home-panel home-panel-center">

@@ -16,7 +16,7 @@ def login():
         password = request.form.get('password') or ''
 
         user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
+        if user and user.is_active and user.check_password(password):
             user.last_login = datetime.utcnow()
             db.session.commit()
             login_user(user, remember=bool(request.form.get('remember')))

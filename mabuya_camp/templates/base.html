@@ -40,6 +40,9 @@
                         {{ current_user.name }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
+                        {% if current_user.is_admin %}
+                        <li><a class="dropdown-item" href="{{ url_for('team.index') }}">Team</a></li>
+                        {% endif %}
                         <li><a class="dropdown-item disabled" href="#">My Profile</a></li>
                         <li><a class="dropdown-item disabled" href="#">Settings</a></li>
                         <li><hr class="dropdown-divider"></li>
