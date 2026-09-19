@@ -1,59 +1,86 @@
 {% extends "base.html" %}
 {% from "projects/_macros.html" import project_card %}
 {% block title %}Home — Mabuya Camp{% endblock %}
+{% block shell_class %}mc-main mc-main--home{% endblock %}
 
 {% block content %}
 <div class="home-layout">
-    <aside class="home-panel home-panel-left">
-        <h2 class="home-hello">Hello, {{ current_user.name.split()[0] }}</h2>
-        {% if current_user.role != 'member' %}
-        <a href="{{ url_for('projects.create') }}" class="home-add-project" title="New project" aria-label="New project">
-            <i class="bi bi-plus-lg"></i>
-            <span>New project</span>
-        </a>
-        {% endif %}
-        {% if current_user.is_admin %}
-        <a href="{{ url_for('team.index') }}" class="home-team-link">
-            <i class="bi bi-people"></i>
-            <span>Team</span>
-        </a>
-        {% endif %}
+    <aside class="home-rail home-rail-left">
+        <h1 class="home-hello">{{ greeting }}, {{ current_user.name.split()[0] }}</h1>
+        <div class="home-actions">
+            {% if current_user.role != 'member' %}
+            <a href="{{ url_for('projects.create') }}" class="home-action home-action--primary">
+                <i class="bi bi-plus-lg"></i>
+                <span>Make a new project</span>
+            </a>
+            {% endif %}
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('team.index') }}" class="home-action">
+                <i class="bi bi-key"></i>
+                <span>Adminland</span>
+            </a>
+            {% endif %}
+        </div>
     </aside>
 
-    <section class="home-panel home-panel-center">
-        <h3 class="home-panel-title">Active projects</h3>
-        {% if projects %}
-            <div class="project-grid">
-                {% for project in projects %}
-                    {{ project_card(project, colors, can_manage=project.id in manageable_ids) }}
-                {% endfor %}
+    <section class="home-hq">
+        <header class="home-hq-head">
+            <div class="home-hq-brand">
+                <!-- <span class="home-hq-logo" aria-hidden="true">MC</span> -->
+                <span class="home-hq-label">Mabuya Camp</span>
             </div>
-        {% else %}
-            <div class="home-panel-empty">
-                <h2>No projects yet</h2>
-                <p>Create your first project to start organizing your team's work.</p>
-            </div>
-        {% endif %}
+            <a href="{{ url_for('projects.index') }}" class="home-hq-expand" title="See all projects" aria-label="See all projects">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </a>
+        </header>
 
-        {% if archived_count %}
-        <p class="home-archived-link">
-            <a href="{{ url_for('projects.archived') }}">View archived projects →</a>
-        </p>
+        {% if home_projects %}
+        <div class="home-project-grid">
+            {% for project in home_projects %}
+                {{ project_card(project, colors, can_manage=project.id in manageable_ids) }}
+            {% endfor %}
+        </div>
+        {% if projects|length > home_projects|length or archived_count %}
+        <div class="home-hq-foot">
+            <a href="{{ url_for('projects.index') }}" class="home-see-all">See all projects</a>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="home-panel-empty">
+            <h2>No projects yet</h2>
+            <p>Create your first project to start organizing your team's work.</p>
+            {% if current_user.role != 'member' %}
+            <a href="{{ url_for('projects.create') }}" class="btn mc-btn mc-btn-primary mt-3">
+                <i class="bi bi-plus-lg"></i> Make a new project
+            </a>
+            {% endif %}
+        </div>
         {% endif %}
     </section>
 
-    <aside class="home-panel home-panel-right">
-        <h3 class="home-panel-title">Recent activity</h3>
+    <aside class="home-rail home-rail-right">
+        <div class="home-activity-head">
+            <h2 class="home-activity-title">Most recent activity</h2>
+            {% if recent_activity %}
+            <a href="{{ url_for('projects.index') }}" class="home-activity-all">View all</a>
+            {% endif %}
+        </div>
+
         {% if recent_activity %}
         <ul class="activity-list">
             {% for item in recent_activity %}
-            <li>
-                <a href="{{ url_for('projects.dashboard', project_id=item.project.id) }}">
-                    <span class="activity-dot" style="background: {{ colors.get(item.project.color, colors.get('teal')) }};"></span>
+            <li class="activity-item">
+                <div class="activity-time">{{ item.at|relative_time }}</div>
+                <a class="activity-row" href="{{ item.url }}">
+                    <span class="activity-avatar" style="--i: {{ loop.index0 }}">{{ item.initials }}</span>
                     <span class="activity-body">
-                        <strong>{{ item.project.name }}</strong>
-                        <span class="activity-text">{{ item.text }}</span>
-                        <span class="activity-time">{{ item.at|relative_time }}</span>
+                        <span class="activity-line">
+                            <strong>{{ item.actor }}</strong>
+                            {{ item.text }}
+                            {% if item.link_label %}
+                            <span class="activity-link">{{ item.link_label }}</span>
+                            {% endif %}
+                        </span>
                     </span>
                 </a>
             </li>
@@ -61,6 +88,19 @@
         </ul>
         {% else %}
         <p class="activity-empty">No recent activity</p>
+        {% endif %}
+
+        {% if active_people %}
+        <div class="home-active-people">
+            <p class="home-active-label">
+                {{ active_people|length }} {{ 'person' if active_people|length == 1 else 'people' }} active in the last 24 hours
+            </p>
+            <div class="home-active-avatars">
+                {% for user in active_people %}
+                <span class="home-active-avatar" title="{{ user.name }}" style="--i: {{ loop.index0 }}">{{ user.initials }}</span>
+                {% endfor %}
+            </div>
+        </div>
         {% endif %}
     </aside>
 </div>

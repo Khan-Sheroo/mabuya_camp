@@ -90,6 +90,145 @@ def _greeting() -> str:
     return 'Good evening'
 
 
+def _short_name(user) -> str:
+    if not user or not user.name:
+        return 'Someone'
+    parts = user.name.strip().split()
+    if len(parts) == 1:
+        return parts[0]
+    return f'{parts[0]} {parts[-1][0]}.'
+
+
+def _home_recent_activity(projects, limit: int = 12):
+    """Build a compact activity feed from recent project events."""
+    project_ids = [p.id for p in projects]
+    by_id = {p.id: p for p in projects}
+    items = []
+    if not project_ids:
+        return items
+
+    for msg in (
+        ProjectMessage.query
+        .filter(
+            ProjectMessage.project_id.in_(project_ids),
+            ProjectMessage.is_draft.is_(False),
+        )
+        .order_by(ProjectMessage.created_at.desc())
+        .limit(limit)
+        .all()
+    ):
+        project = by_id.get(msg.project_id)
+        if not project:
+            continue
+        items.append({
+            'at': msg.created_at,
+            'actor': _short_name(msg.creator),
+            'initials': msg.creator.initials if msg.creator else '?',
+            'text': 'posted',
+            'link_label': msg.title,
+            'url': url_for('projects.message_detail', project_id=project.id, message_id=msg.id),
+            'project': project,
+        })
+
+    for doc in (
+        ProjectDocument.query
+        .filter(ProjectDocument.project_id.in_(project_ids))
+        .order_by(ProjectDocument.uploaded_at.desc())
+        .limit(limit)
+        .all()
+    ):
+        project = by_id.get(doc.project_id)
+        if not project:
+            continue
+        label = doc.label or doc.original_filename
+        items.append({
+            'at': doc.uploaded_at,
+            'actor': _short_name(doc.uploader),
+            'initials': doc.uploader.initials if doc.uploader else '?',
+            'text': 'added a file',
+            'link_label': label,
+            'url': url_for('projects.files', project_id=project.id),
+            'project': project,
+        })
+
+    for event in (
+        ProjectEvent.query
+        .filter(ProjectEvent.project_id.in_(project_ids))
+        .order_by(ProjectEvent.updated_at.desc())
+        .limit(limit)
+        .all()
+    ):
+        project = by_id.get(event.project_id)
+        if not project:
+            continue
+        items.append({
+            'at': event.updated_at or event.created_at,
+            'actor': _short_name(event.creator),
+            'initials': event.creator.initials if event.creator else '?',
+            'text': 'scheduled',
+            'link_label': event.title,
+            'url': url_for('projects.schedule', project_id=project.id),
+            'project': project,
+        })
+
+    for todo in (
+        Todo.query
+        .filter(Todo.project_id.in_(project_ids))
+        .order_by(Todo.updated_at.desc())
+        .limit(limit)
+        .all()
+    ):
+        project = by_id.get(todo.project_id)
+        if not project:
+            continue
+        items.append({
+            'at': todo.updated_at or todo.created_at,
+            'actor': _short_name(todo.creator),
+            'initials': todo.creator.initials if todo.creator else '?',
+            'text': 'updated to-dos on',
+            'link_label': project.name,
+            'url': url_for('projects.todos', project_id=project.id),
+            'project': project,
+        })
+
+    # Fallback: project create/update when nothing else exists
+    if not items:
+        for project in projects[:limit]:
+            creator = project.creator
+            created = (
+                project.created_at
+                and project.updated_at
+                and project.created_at == project.updated_at
+            )
+            items.append({
+                'at': project.updated_at or project.created_at,
+                'actor': _short_name(creator),
+                'initials': creator.initials if creator else '?',
+                'text': 'created' if created else 'updated',
+                'link_label': project.name,
+                'url': url_for('projects.dashboard', project_id=project.id),
+                'project': project,
+            })
+
+    items.sort(key=lambda x: x['at'] or datetime.min, reverse=True)
+    return items[:limit]
+
+
+def _active_people(hours: int = 24, limit: int = 12):
+    since = datetime.utcnow() - timedelta(hours=hours)
+    return (
+        User.query
+        .filter(
+            User.is_active.is_(True),
+            User.last_login.isnot(None),
+            User.last_login >= since,
+        )
+        .order_by(User.last_login.desc())
+        .limit(limit)
+        .all()
+    )
+
+
 # ── Home ──────────────────────────────────────────────────────────────
 
 @home_bp.route('/')
@@ -106,25 +245,16 @@ def index():
         .filter(Project.status == 'archived')
         .count()
     )
-    # Stand-in until a full activity feed exists
-    recent_activity = []
-    for project in projects[:8]:
-        if project.created_at and project.updated_at and project.created_at == project.updated_at:
-            text = 'Project created'
-        else:
-            text = 'Project updated'
-        recent_activity.append({
-            'project': project,
-            'text': text,
-            'at': project.updated_at,
-        })
+    home_limit = 8
     return render_template(
         'home.html',
         projects=projects,
+        home_projects=projects[:home_limit],
         archived_count=archived_count,
         greeting=_greeting(),
         colors=PROJECT_COLORS,
-        recent_activity=recent_activity,
+        recent_activity=_home_recent_activity(projects),
+        active_people=_active_people(),
         manageable_ids={p.id for p in projects if _can_manage_project(p)},
     )
 

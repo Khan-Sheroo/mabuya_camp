@@ -14,12 +14,23 @@
 
 {% macro project_card(project, colors, can_manage=false) %}
 {% set hex = project_color(project, colors) %}
+{% set members = project.member_users[:5] %}
 <article class="project-card" style="--card-color: {{ hex }};" data-project-id="{{ project.id }}">
     <a class="project-card-link" href="{{ url_for('projects.dashboard', project_id=project.id) }}">
         <h3>{{ project.name }}</h3>
-        <div class="desc">{{ project.description or 'No description yet.' }}</div>
-        <div class="project-meta">
-            <span><i class="bi bi-people"></i> {{ project.member_count }} {{ 'person' if project.member_count == 1 else 'people' }}</span>
+        {% if project.description %}
+        <div class="desc">{{ project.description }}</div>
+        {% endif %}
+        <div class="project-card-footer">
+            <div class="project-card-avatars" aria-label="{{ project.member_count }} people">
+                {% for user in members %}
+                <span class="project-card-avatar" title="{{ user.name }}" style="--i: {{ loop.index0 }};">{{ user.initials }}</span>
+                {% endfor %}
+                {% if project.member_count > members|length %}
+                <span class="project-card-avatar project-card-avatar-more" title="{{ project.member_count - members|length }} more">+{{ project.member_count - members|length }}</span>
+                {% endif %}
+            </div>
+            <span class="project-card-status" title="{{ project.color|capitalize }}" aria-hidden="true"></span>
         </div>
     </a>
     {% if can_manage %}
